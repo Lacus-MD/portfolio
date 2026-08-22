@@ -2,7 +2,7 @@
 <html lang="hu">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Portf√≥li√≥ ‚ÄĒ banki j√≥v√°hagy√°s</title>
+<title>Portf&#243;li&#243; &#8212; banki j&#243;v&#225;hagy&#225;s</title>
 <style>
   :root { color-scheme: light dark; }
   body { font: 16px/1.6 -apple-system, system-ui, sans-serif;
@@ -19,11 +19,11 @@
   .box { margin-top: 1rem; padding: .8rem 1rem; border-radius: .6rem;
          background: color-mix(in oklab, currentColor 6%, transparent); }
 </style>
-<h1 id="title">Banki j√≥v√°hagy√°s</h1>
-<p id="msg">Feldolgoz√°s‚Ä¶</p>
+<h1 id="title">Banki j&#243;v&#225;hagy&#225;s</h1>
+<p id="msg">Feldolgoz&#225;s&#8230;</p>
 <div id="detail"></div>
-<p class="meta">Ez az oldal csak a j√≥v√°hagy√°s visszat√©r√©si pontja. Nem t√°rol √©s
-   nem tov√°bb√≠t semmit: ami itt l√°tszik, az a b√∂ng√©szŇĎd c√≠msor√°b√≥l j√∂n.</p>
+<p class="meta">Ez az oldal csak a j&#243;v&#225;hagy&#225;s visszat&#233;r&#233;si pontja. Nem t&#225;rol &#233;s
+   nem tov&#225;bb&#237;t semmit: ami itt l&#225;tszik, az a b&#246;ng&#233;sz&#337;d c&#237;msor&#225;b&#243;l j&#246;n.</p>
 
 <script>
   const q = new URLSearchParams(location.search);
@@ -33,26 +33,26 @@
   const detail = document.getElementById("detail");
 
   if (error) {
-    title.textContent = "A j√≥v√°hagy√°s nem siker√ľlt";
+    title.textContent = "A j\u00f3v\u00e1hagy\u00e1s nem siker\u00fclt";
     title.className = "bad";
     msg.textContent = q.get("error_description") || error;
   } else if (code) {
-    title.textContent = "Sikeres j√≥v√°hagy√°s";
+    title.textContent = "Sikeres j\u00f3v\u00e1hagy\u00e1s";
     title.className = "ok";
-    msg.textContent = "A bank visszaigazolta. Nyisd meg a Portf√≥li√≥t a folytat√°shoz.";
+    msg.textContent = "A bank visszaigazolta. Nyisd meg a Portf\u00f3li\u00f3t a folytat\u00e1shoz.";
     const link = document.createElement("a");
     link.className = "btn";
     link.href = "portfolio://enable-banking?code=" + encodeURIComponent(code) +
                 (state ? "&state=" + encodeURIComponent(state) : "");
-    link.textContent = "Megnyit√°s a Portf√≥li√≥ban";
+    link.textContent = "Megnyit\u00e1s a Portf\u00f3li\u00f3ban";
     detail.appendChild(link);
     const box = document.createElement("div");
     box.className = "box";
-    box.innerHTML = "<strong>Ha a gomb nem mŇĪk√∂dik</strong> (p√©ld√°ul Macen nyitottad meg), " +
-                    "a k√≥d k√©zzel is √°tvihetŇĎ:<br><code>" + code + "</code>";
+    box.innerHTML = "<strong>Ha a gomb nem m\u0171k\u00f6dik</strong> (p\u00e9ld\u00e1ul Macen nyitottad meg), " +
+                    "a k\u00f3d k\u00e9zzel is \u00e1tvihet\u0151:<br><code>" + code + "</code>";
     detail.appendChild(box);
   } else {
-    msg.textContent = "Ez az oldal a banki j√≥v√°hagy√°s ut√°n t√∂lt be. " +
-                      "K√∂zvetlen√ľl megnyitva nincs mit mutatnia.";
+    msg.textContent = "Ez az oldal a banki j\u00f3v\u00e1hagy\u00e1s ut\u00e1n t\u00f6lt be. " +
+                      "K\u00f6zvetlen\u00fcl megnyitva nincs mit mutatnia.";
   }
 </script>
