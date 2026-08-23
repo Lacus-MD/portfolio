@@ -613,6 +613,8 @@ struct NewsView: View {
     }
 
     private func load() async {
+        let signpost = PerformanceSignposts.begin("News Load")
+        defer { PerformanceSignposts.end("News Load", id: signpost) }
         let shouldFadeIn = items.isEmpty && movers.isEmpty
         if shouldFadeIn { contentVisible = false }
         loading = true

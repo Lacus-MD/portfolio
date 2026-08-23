@@ -300,6 +300,8 @@ final class PortfolioStore {
     }
 
     private func performRefresh() async {
+        let signpost = PerformanceSignposts.begin("Portfolio Refresh")
+        defer { PerformanceSignposts.end("Portfolio Refresh", id: signpost) }
         isRefreshing = true
         lastError = nil
         defer { isRefreshing = false }
