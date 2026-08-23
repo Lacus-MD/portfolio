@@ -5,6 +5,7 @@ struct SettingsView: View {
     @Environment(PortfolioStore.self) private var store
     @Environment(EnableBankingService.self) private var banking
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     var showsDone: Bool = false
 
     @State private var isImporting = false
@@ -446,20 +447,11 @@ struct SettingsView: View {
             .padding(.vertical, 4)
 
             ThemeGallery(
-                title: "Világos paletták",
-                subtitle: "napfényes változat",
+                title: "Paletták",
+                subtitle: colorScheme == .dark ? "sötét változat" : "világos változat",
                 themes: AppTheme.all,
                 selectedID: store.themeID,
-                isDark: false,
-                onSelect: store.setTheme
-            )
-
-            ThemeGallery(
-                title: "Sötét párok",
-                subtitle: "ugyanazok a színek, mély tónuson",
-                themes: AppTheme.all,
-                selectedID: store.themeID,
-                isDark: true,
+                isDark: colorScheme == .dark,
                 onSelect: store.setTheme
             )
 
@@ -471,7 +463,7 @@ struct SettingsView: View {
         } header: {
             Text("Témák")
         } footer: {
-            Text("A színpaletta és a fényerő egymástól független. A Rendszer mód a telefon beállítását követi; a másik kettő rögzíti az app megjelenését. Az app-ikon cseréjekor az iOS saját értesítést jelenít meg.")
+            Text("A galéria mindig csak az aktív megjelenéshez tartozó változatot mutatja. A Rendszer mód a telefon beállítását követi; a másik kettő rögzíti az app megjelenését. Az app-ikon cseréjekor az iOS saját értesítést jelenít meg.")
         }
     }
 
