@@ -29,6 +29,18 @@ def themes():
             "deep": hexv("canvasDark"), "shell": hexv("cardDark"),
             "accent": int(accent.group(1), 16) if accent else None,
         })
+
+    # A monokróm család közös gyárfüggvényt használ: mindegyiknek ugyanaz
+    # a szürke háttere, és csak az egyetlen megadott akcentusa tér el.
+    for _, body in re.findall(r"static let (\w+) = makeMonochrome\((.*?)\n    \)", src, re.S):
+        tid = re.search(r'\bid:\s*"([^"]+)"', body)
+        accent = re.search(r"\baccent:\s*0x([0-9A-Fa-f]{6})", body)
+        if tid and accent:
+            out.append({
+                "id": tid.group(1),
+                "deep": 0x090909, "shell": 0x191919,
+                "accent": int(accent.group(1), 16),
+            })
     return out
 
 

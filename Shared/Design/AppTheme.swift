@@ -84,7 +84,9 @@ struct AppTheme: Identifiable, Codable, Hashable {
     /// téma és az alternatív app-ikon neve frissítés után sem vész el.
     static let all: [AppTheme] = [
         pastel, ocean, forest, graphite, midnight, charcoal,
-        basalt, cherry, paper, dawn, sand, lavender, monochrome,
+        basalt, cherry, paper, dawn, sand, lavender,
+        monochrome, monochromeRed, monochromeBlue,
+        monochromeLime, monochromeYellow,
     ]
 
     static var darkShelled: [AppTheme] { all.filter { !$0.hasLightShell } }
@@ -190,17 +192,41 @@ struct AppTheme: Identifiable, Codable, Hashable {
         accents: [0xC29AC7, 0x55B8C6, 0xC98BAE, 0xDED17E, 0x99C9B1, 0xEF8D9A]
     )
 
-    /// Szándékosan visszafogott, majdnem teljesen színtelen felület.
-    /// Az erős színek csak interaktív kiemeléseken, adatsorokon és kisebb
-    /// állapotjelzőkön jelennek meg — nem színezik be a vásznat vagy a kártyát.
-    static let monochrome = make(
-        id: "monochrome", name: "Monokróm",
-        canvasLight: 0xF3F3F1, cardLight: 0xFFFFFF, inkLight: 0x161616,
-        canvasDark: 0x090909, cardDark: 0x191919, inkDark: 0xF5F5F2,
-        shellLight: 0xE7E7E4,
-        accents: [0xFFA500, 0xB22222, 0x111184, 0xCCFF00, 0xFFED29, 0x7C7C78],
-        negative: 0xB22222
+    /// Öt valódi monokróm téma: a teljes felület szürkeárnyalatos, és csak
+    /// az elsődleges kiemelések kapják meg az adott egyetlen színt.
+    /// A régi `monochrome` azonosító a narancs változaté marad, így a már
+    /// kiválasztott téma frissítés után sem vész el.
+    static let monochrome = makeMonochrome(
+        id: "monochrome", name: "Mono · Narancs", accent: 0xFFA500
     )
+
+    static let monochromeRed = makeMonochrome(
+        id: "monochrome-red", name: "Mono · Vörös", accent: 0xB22222
+    )
+
+    static let monochromeBlue = makeMonochrome(
+        id: "monochrome-blue", name: "Mono · Sötétkék", accent: 0x111184
+    )
+
+    static let monochromeLime = makeMonochrome(
+        id: "monochrome-lime", name: "Mono · Lime", accent: 0xCCFF00
+    )
+
+    static let monochromeYellow = makeMonochrome(
+        id: "monochrome-yellow", name: "Mono · Sárga", accent: 0xFFED29
+    )
+
+    private static func makeMonochrome(id: String, name: String, accent: UInt32) -> AppTheme {
+        make(
+            id: id, name: name,
+            canvasLight: 0xF3F3F3, cardLight: 0xFFFFFF, inkLight: 0x161616,
+            canvasDark: 0x090909, cardDark: 0x191919, inkDark: 0xF5F5F5,
+            shellLight: 0xE7E7E7,
+            accents: [accent, 0xD8D8D8, 0xB8B8B8, 0x969696, 0x707070, 0x3E3E3E],
+            positive: 0x7A7A7A,
+            negative: 0x7A7A7A
+        )
+    }
 
     private static func make(
         id: String,
