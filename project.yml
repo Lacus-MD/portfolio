@@ -1,0 +1,137 @@
+name: Portfolio
+options:
+  bundleIdPrefix: hu.halasz
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+settings:
+  base:
+    MARKETING_VERSION: "1.0"
+    # Az `NSUbiquitousContainers` beállítást (a Fájlok appban látható
+    # „Portfólió" mappa) az iOS GYORSÍTÓTÁRAZZA, és csak akkor olvassa újra,
+    # ha a build-szám nőtt. Ezért nem jelent meg a mappa.
+    CURRENT_PROJECT_VERSION: "3"
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: YGU3DVQ6S8
+    CODE_SIGN_STYLE: Automatic
+    GENERATE_INFOPLIST_FILE: YES
+
+targets:
+  Portfolio:
+    type: application
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: App/Sources
+      - path: App/Resources
+      # A modellek, a hálózati szolgáltatások és a formázók mindkét célba fordulnak,
+      # hogy az app és a widget ne tudjon szétcsúszni egymástól.
+      - path: Shared
+    dependencies:
+      - target: PortfolioWidgets
+      - target: PortfolioShare
+      - target: PortfolioWatch
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: hu.halasz.portfolio
+        CODE_SIGN_ENTITLEMENTS: App/Portfolio.entitlements
+        INFOPLIST_FILE: App/Info.plist
+        # iPhone + iPad. A dizájn 402 pt-re készült, ezért iPaden a tartalom
+        # korlátozott szélességű és középre zárt — a széthúzott egyoszlopos
+        # elrendezés olvashatatlan lenne.
+        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_KEY_CFBundleDisplayName: Portfólió
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # Háttérfrissítés (napi iCloud-begyűjtés) + a feladat azonosítója.
+        # A háttérfrissítés két kulcsa NEM ide való: a célpontnak saját
+        # `App/Info.plist`-je van, és ilyenkor Xcode az `INFOPLIST_KEY_*`
+        # beállításokat FIGYELMEN KÍVÜL HAGYJA — csendben, hibaüzenet nélkül.
+        # Mérve: a beállítás ott volt, a csomagba egyik kulcs sem került be,
+        # ezért a napi háttérfeladat regisztrációja soha nem sikerült.
+        # A két kulcs helye: App/Info.plist (UIBackgroundModes,
+        # BGTaskSchedulerPermittedIdentifiers).
+        # Téma szerinti alternatív ikonok. A készletek a `Tools/gen_icons.py`
+        # kimenetei, ugyanazokból a színekből, mint a felület.
+        ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: AppIcon-pastel AppIcon-ocean AppIcon-forest AppIcon-graphite AppIcon-midnight AppIcon-charcoal AppIcon-basalt AppIcon-cherry AppIcon-paper AppIcon-dawn AppIcon-sand AppIcon-lavender
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+
+  PortfolioWidgets:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: Widgets/Sources
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: hu.halasz.portfolio.widgets
+        CODE_SIGN_ENTITLEMENTS: Widgets/PortfolioWidgets.entitlements
+        TARGETED_DEVICE_FAMILY: "1"
+        INFOPLIST_KEY_CFBundleDisplayName: Portfólió
+        INFOPLIST_FILE: Widgets/Info.plist
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+
+  PortfolioShare:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: Share/Sources
+      # Csak amire tényleg szükség van: a postaláda és a színek. A modelleket
+      # és a hálózati réteget szándékosan NEM fordítjuk be a kiterjesztésbe.
+      - path: Shared/Inbox.swift
+      - path: Shared/Design/DesignSystem.swift
+      - path: Shared/Design/AppTheme.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: hu.halasz.portfolio.share
+        CODE_SIGN_ENTITLEMENTS: Share/PortfolioShare.entitlements
+        INFOPLIST_FILE: Share/Info.plist
+        INFOPLIST_KEY_CFBundleDisplayName: Portfólió
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+
+  PortfolioWatch:
+    type: application
+    platform: watchOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: Watch/Sources
+      # Csak a szerződés és a formázók kellenek — az óra nem számol.
+      - path: Shared/WatchSummary.swift
+      - path: Shared/Support/Formatters.swift
+      - path: Shared/Design/DesignSystem.swift
+      - path: Shared/Design/AppTheme.swift
+    dependencies:
+      - target: PortfolioWatchWidgets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: hu.halasz.portfolio.watchkitapp
+        INFOPLIST_FILE: Watch/Info.plist
+        INFOPLIST_KEY_CFBundleDisplayName: Portfólió
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+
+  PortfolioWatchWidgets:
+    type: app-extension
+    platform: watchOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: Watch/Widgets
+      - path: Shared/WatchSummary.swift
+      - path: Shared/Support/Formatters.swift
+      - path: Shared/Design/DesignSystem.swift
+      - path: Shared/Design/AppTheme.swift
+      # Csak a szikragörbe kell, nem az egész kezdőnézet (az a WatchModelre épül).
+      - path: Watch/Sources/WatchSpark.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: hu.halasz.portfolio.watchkitapp.widgets
+        INFOPLIST_FILE: Watch/WidgetsInfo.plist
+        INFOPLIST_KEY_CFBundleDisplayName: Portfólió
+        ENABLE_USER_SCRIPT_SANDBOXING: NO

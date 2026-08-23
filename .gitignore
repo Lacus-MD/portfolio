@@ -1,0 +1,16 @@
+.DS_Store
+.build/
+DerivedData/
+build/
+.pnpm-store/
+.claude/
+work/
+# Xcode user data
+*.xcuserstate
+*.xcuserdatad/
+Portfolio.xcodeproj/xcuserdata/
+Portfolio.xcodeproj/project.xcworkspace/xcuserdata/
+
+# Optional bundles / generated artifacts
+*.app
+EnableBankingCallbackSite/
