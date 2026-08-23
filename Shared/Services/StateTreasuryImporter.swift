@@ -86,8 +86,8 @@ enum StateTreasuryImporter {
 
         let totalCurrent = positions.reduce(Decimal(0)) { $0 + $1.currentValueHUF }
         let asOf = parseAsOfDate(text)
-        let accountID = inferAccountID(from: accountHint)
         let accountName = inferAccountName(from: text, fallback: accountHint)
+        let accountID = inferAccountID(from: accountHint, text: text)
 
         var warnings: [String] = []
         if unknownRows > 0 {
@@ -207,7 +207,13 @@ enum StateTreasuryImporter {
         return nil
     }
 
-    private static func inferAccountID(from hint: String) -> String {
+    private static func inferAccountID(from hint: String, text: String) -> String {
+        // Az export neve exportonként változhat (akár dátumot is tartalmazhat),
+        // de ugyanazt az Államkincstár-számlát szeretnénk frissíteni.
+        let normalized = normalize(text)
+        if normalized.contains("allamkincstar") || normalized.contains("kincstar") {
+            return "treasury-allamkincstar"
+        }
         let slug = hint
             .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
             .replacingOccurrences(of: " ", with: "-")

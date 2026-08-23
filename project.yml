@@ -12,7 +12,7 @@ settings:
     # Az `NSUbiquitousContainers` beállítást (a Fájlok appban látható
     # „Portfólió" mappa) az iOS GYORSÍTÓTÁRAZZA, és csak akkor olvassa újra,
     # ha a build-szám nőtt. Ezért nem jelent meg a mappa.
-    CURRENT_PROJECT_VERSION: "3"
+    CURRENT_PROJECT_VERSION: "4"
     SWIFT_VERSION: "5.0"
     DEVELOPMENT_TEAM: YGU3DVQ6S8
     CODE_SIGN_STYLE: Automatic

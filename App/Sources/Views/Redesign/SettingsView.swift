@@ -332,7 +332,7 @@ struct SettingsView: View {
                 }
             }
             .fileImporter(isPresented: $isImporting,
-                          allowedContentTypes: [.commaSeparatedText, .plainText, .text]) { result in
+                          allowedContentTypes: [.pdf, .commaSeparatedText, .plainText, .text]) { result in
                 Task { await handleImport(result) }
             }
             .sheet(item: $editingAsset) { CashAssetEditor(asset: $0) }

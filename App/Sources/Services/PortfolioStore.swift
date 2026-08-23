@@ -494,7 +494,7 @@ final class PortfolioStore {
             return try applyOTP(text: text)
         }
         if StateTreasuryImporter.detect(text: text) {
-            return try applyStateTreasury(text: text, accountHint: fileName)
+            return try await applyStateTreasury(text: text, accountHint: fileName)
         }
 
         let account = StatementImporter.accountReference(from: fileName) ?? fileName
@@ -553,7 +553,7 @@ final class PortfolioStore {
     /// mert az állampapír-értékhez nincs támogatott árfolyamforrás.
     /// Ezért a platformot készpénz-eszközként importáljuk friss HUF egyenleggel,
     /// így minden képernyőben megjelenik a vagyonkészletben és a platform-kártyákon.
-    private func applyStateTreasury(text: String, accountHint: String) throws
+    private func applyStateTreasury(text: String, accountHint: String) async throws
         -> (warnings: [String], account: String) {
         let result = try StateTreasuryImporter.import(text: text, accountHint: accountHint)
 
@@ -563,6 +563,7 @@ final class PortfolioStore {
 
         cashAssets.append(result.asset)
         save()
+        await refresh(force: true)
 
         return (result.warnings, result.accountName)
     }
