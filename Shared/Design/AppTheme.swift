@@ -84,7 +84,7 @@ struct AppTheme: Identifiable, Codable, Hashable {
     /// téma és az alternatív app-ikon neve frissítés után sem vész el.
     static let all: [AppTheme] = [
         pastel, ocean, forest, graphite, midnight, charcoal,
-        basalt, cherry, paper, dawn, sand, lavender,
+        basalt, cherry, paper, dawn, sand, lavender, monochrome,
     ]
 
     static var darkShelled: [AppTheme] { all.filter { !$0.hasLightShell } }
@@ -188,6 +188,17 @@ struct AppTheme: Identifiable, Codable, Hashable {
         canvasDark: 0x2C1E2B, cardDark: 0x3C2A3A, inkDark: 0xF8EDF5,
         shellLight: 0xF0DFEA,
         accents: [0xC29AC7, 0x55B8C6, 0xC98BAE, 0xDED17E, 0x99C9B1, 0xEF8D9A]
+    )
+
+    /// Szándékosan visszafogott, majdnem teljesen színtelen felület.
+    /// Az erős színek csak interaktív kiemeléseken, adatsorokon és kisebb
+    /// állapotjelzőkön jelennek meg — nem színezik be a vásznat vagy a kártyát.
+    static let monochrome = make(
+        id: "monochrome", name: "Monokróm",
+        canvasLight: 0xF3F3F1, cardLight: 0xFFFFFF, inkLight: 0x161616,
+        canvasDark: 0x090909, cardDark: 0x191919, inkDark: 0xF5F5F2,
+        shellLight: 0xE7E7E4,
+        accents: [0xFFA500, 0xB22222, 0x111184, 0xCCFF00, 0xFFED29, 0x7C7C78]
     )
 
     private static func make(

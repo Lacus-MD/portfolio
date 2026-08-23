@@ -12,7 +12,7 @@ settings:
     # Az `NSUbiquitousContainers` beállítást (a Fájlok appban látható
     # „Portfólió" mappa) az iOS GYORSÍTÓTÁRAZZA, és csak akkor olvassa újra,
     # ha a build-szám nőtt. Ezért nem jelent meg a mappa.
-    CURRENT_PROJECT_VERSION: "16"
+    CURRENT_PROJECT_VERSION: "17"
     SWIFT_VERSION: "5.0"
     DEVELOPMENT_TEAM: YGU3DVQ6S8
     CODE_SIGN_STYLE: Automatic
@@ -65,7 +65,7 @@ targets:
         # Téma szerinti alternatív ikonok. A készletek a `Tools/gen_icons.py`
         # kimenetei, ugyanazokból a színekből, mint a felület.
         ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES
-        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: AppIcon-pastel AppIcon-ocean AppIcon-forest AppIcon-graphite AppIcon-midnight AppIcon-charcoal AppIcon-basalt AppIcon-cherry AppIcon-paper AppIcon-dawn AppIcon-sand AppIcon-lavender
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: AppIcon-pastel AppIcon-ocean AppIcon-forest AppIcon-graphite AppIcon-midnight AppIcon-charcoal AppIcon-basalt AppIcon-cherry AppIcon-paper AppIcon-dawn AppIcon-sand AppIcon-lavender AppIcon-monochrome
         ENABLE_USER_SCRIPT_SANDBOXING: NO
 
   PortfolioWidgets:
