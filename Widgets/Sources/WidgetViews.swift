@@ -81,9 +81,9 @@ struct ValueWidgetView: View {
         VStack(alignment: .leading, spacing: 0) {
             header
             Spacer(minLength: 4)
-            Text(Fmt.compact(entry.valueHUF, currency: "HUF"))
-                .font(.system(size: 25, weight: .semibold, design: .rounded))
-                .minimumScaleFactor(0.6)
+            Text(Fmt.huf(entry.valueHUF))
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .minimumScaleFactor(0.48)
                 .lineLimit(1)
                 .widgetAccentable()
             gainLine
@@ -99,13 +99,10 @@ struct ValueWidgetView: View {
                 header
                 Spacer(minLength: 4)
                 Text(Fmt.huf(entry.valueHUF))
-                    .font(.system(size: 24, weight: .semibold, design: .rounded))
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
                     .minimumScaleFactor(0.5)
                     .lineLimit(1)
                     .widgetAccentable()
-                Text(Fmt.huf(entry.valueHUF))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
                 gainLine
                 Spacer(minLength: 6)
                 Sparkline(values: entry.sparkline, tint: tint)
@@ -166,9 +163,9 @@ struct ValueWidgetView: View {
             // amikor a teljes hozam pluszban áll. A tint átöröklése zöld
             // mínuszt eredményezne — pont a fordítottját annak, ami történt.
             // A kis widgetre nem fér ki, ott elhagyjuk.
-            if let day = entry.dayChangeEUR, family != .systemSmall {
+            if let day = entry.dayChangeHUF, family != .systemSmall {
                 Text("·").foregroundStyle(.secondary)
-                Text(Fmt.signedEUR(day))
+                Text((day >= 0 ? "+" : "") + Fmt.huf(day))
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(DS.Color.sign(day.doubleValue))
                     .lineLimit(1)
@@ -180,7 +177,7 @@ struct ValueWidgetView: View {
     // MARK: - Zárolási képernyő
 
     private var inlineView: some View {
-        Text("\(Fmt.compact(entry.valueHUF, currency: "HUF")) · \(Fmt.percent(entry.displayGainPct))")
+        Text("\(Fmt.huf(entry.valueHUF)) · \(Fmt.percent(entry.displayGainPct))")
     }
 
     private var circularView: some View {
@@ -197,10 +194,11 @@ struct ValueWidgetView: View {
     private var rectangularView: some View {
         VStack(alignment: .leading, spacing: 1) {
             Text("Portfólió").font(.caption2).foregroundStyle(.secondary)
-            Text(Fmt.compact(entry.valueHUF, currency: "HUF"))
+            Text(Fmt.huf(entry.valueHUF))
                 .font(.headline.weight(.semibold))
                 .widgetAccentable()
-            Text("\(Fmt.percent(entry.displayGainPct)) · \(Fmt.compact(entry.valueHUF, currency: "HUF"))")
+            Text(entry.dayChangeHUF.map { "Ma " + ($0 >= 0 ? "+" : "") + Fmt.huf($0) }
+                 ?? Fmt.percent(entry.displayGainPct))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
@@ -220,64 +218,205 @@ struct ValueWidgetView: View {
     }
 }
 
-/// A megoszlás-widget: melyik alap mekkora szeletet foglal.
+/// Pénzügyi pillanatkép: pontos nettó vagyon, napi változás, számlaegyenlegek
+/// és tartozások. A korábbi „megoszlás" nézet sok üres helyet hagyott, csak
+/// rövidített végösszeget írt ki, és a folyószámlára hamis hozamot számolt.
 struct BreakdownWidgetView: View {
     @Environment(\.widgetFamily) private var environmentFamily
     let entry: PortfolioEntry
     var familyOverride: WidgetFamily?
     private var family: WidgetFamily { familyOverride ?? environmentFamily }
 
-    private var visibleCount: Int { family == .systemLarge ? 7 : 3 }
+    private var visibleCount: Int { family == .systemLarge ? 5 : 3 }
+    private var movementColor: Color {
+        DS.Color.sign(entry.dayChangeHUF?.doubleValue ?? entry.displayGainPct)
+    }
 
     var body: some View {
         if !entry.hasHoldings {
             ValueWidgetView(entry: entry)
+        } else if family == .systemLarge {
+            largeView
         } else {
-            VStack(alignment: .leading, spacing: family == .systemLarge ? 10 : 7) {
-                HStack {
-                    Text("A számla megoszlása")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .widgetAccentable()
-                    Spacer()
-                    Text(Fmt.compact(entry.valueHUF, currency: "HUF"))
-                        .font(.caption.weight(.semibold).monospacedDigit())
-                }
+            mediumView
+        }
+    }
 
+    private var largeView: some View {
+        VStack(alignment: .leading, spacing: 11) {
+            hero
+
+            HStack(alignment: .firstTextBaseline) {
+                Text("SZÁMLÁK")
+                    .font(.system(size: 10, weight: .bold))
+                    .tracking(0.9)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text("\(entry.slices.count) egyenleg")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
+            VStack(spacing: 8) {
                 ForEach(entry.slices.prefix(visibleCount)) { slice in
-                    VStack(alignment: .leading, spacing: 3) {
-                        HStack(spacing: 6) {
-                            Text(slice.name)
-                                .font(.caption.weight(.semibold))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.75)
-                            Spacer(minLength: 4)
-                            Text(Fmt.percent(slice.gainPercent))
-                                .font(.caption2.monospacedDigit())
-                                .foregroundStyle(DS.Color.sign(slice.gainPercent))
-                            Text(String(format: "%.1f%%", slice.weight * 100))
-                                .font(.caption2.monospacedDigit())
-                                .foregroundStyle(.secondary)
-                                .frame(width: 40, alignment: .trailing)
-                        }
-                        GeometryReader { geo in
-                            ZStack(alignment: .leading) {
-                                Capsule().fill(DS.Color.accent(slice.accentIndex).opacity(0.16))
-                                Capsule().fill(DS.Color.accent(slice.accentIndex))
-                                    .frame(width: max(geo.size.width * slice.weight, 3))
-                            }
-                        }
-                        .frame(height: 4)
-                    }
+                    accountRow(slice, compact: false)
                 }
+            }
 
-                if entry.slices.count > visibleCount {
-                    Text("+\(entry.slices.count - visibleCount) további")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
+            if entry.liabilitiesHUF > 0 {
+                HStack(spacing: 5) {
+                    Label(Fmt.huf(entry.grossAssetsHUF), systemImage: "plus.circle.fill")
+                        .foregroundStyle(DS.Color.positiveGreen)
+                    Spacer(minLength: 4)
+                    Label("−" + Fmt.huf(entry.liabilitiesHUF),
+                          systemImage: "minus.circle.fill")
+                        .foregroundStyle(DS.Color.negativeCream)
                 }
-                if family == .systemLarge { Spacer(minLength: 0) }
+                .font(.caption2.weight(.semibold).monospacedDigit())
             }
         }
+    }
+
+    private var mediumView: some View {
+        HStack(alignment: .top, spacing: 13) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 4) {
+                    Text("NETTÓ VAGYON")
+                        .font(.system(size: 9, weight: .bold))
+                        .tracking(0.7)
+                        .foregroundStyle(.secondary)
+                    freshnessIcon
+                }
+                Text(Fmt.huf(entry.valueHUF))
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .minimumScaleFactor(0.55)
+                    .lineLimit(1)
+                    .widgetAccentable()
+                dayChange
+                Spacer(minLength: 2)
+                Sparkline(values: entry.sparkline, tint: movementColor)
+                    .frame(height: 38)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            VStack(spacing: 8) {
+                ForEach(entry.slices.prefix(visibleCount)) { slice in
+                    accountRow(slice, compact: true)
+                }
+            }
+            .frame(width: 154)
+        }
+    }
+
+    private var hero: some View {
+        ZStack(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(.linearGradient(
+                    colors: [DS.Color.coral.opacity(0.25),
+                             DS.Color.lilac.opacity(0.18),
+                             DS.Color.mint.opacity(0.12)],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                ))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .strokeBorder(.white.opacity(0.28), lineWidth: 0.8)
+                }
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 4) {
+                    Text("NETTÓ VAGYON")
+                        .font(.system(size: 10, weight: .bold))
+                        .tracking(0.9)
+                        .foregroundStyle(.secondary)
+                    freshnessIcon
+                    Spacer()
+                    Text(Fmt.time(entry.asOf ?? entry.date))
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+                Text(Fmt.huf(entry.valueHUF))
+                    .font(.system(size: 30, weight: .bold, design: .rounded))
+                    .minimumScaleFactor(0.65)
+                    .lineLimit(1)
+                    .widgetAccentable()
+                HStack(alignment: .bottom) {
+                    dayChange
+                    Spacer(minLength: 10)
+                    Sparkline(values: entry.sparkline, tint: movementColor)
+                        .frame(width: 112, height: 38)
+                }
+            }
+            .padding(14)
+        }
+        .frame(height: 122)
+    }
+
+    @ViewBuilder private var freshnessIcon: some View {
+        if entry.isLive {
+            Circle().fill(DS.Color.positiveGreen).frame(width: 5, height: 5)
+        } else {
+            Image(systemName: "clock.badge.exclamationmark")
+                .font(.system(size: 8))
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var dayChange: some View {
+        let change = entry.dayChangeHUF
+        return HStack(spacing: 4) {
+            Image(systemName: (change ?? 0) >= 0 ? "arrow.up.right" : "arrow.down.right")
+                .font(.system(size: 9, weight: .bold))
+            Text(change.map { "Ma " + ($0 >= 0 ? "+" : "") + Fmt.huf($0) }
+                 ?? "Még nincs tegnapi mérés")
+                .font(.caption.weight(.semibold).monospacedDigit())
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .foregroundStyle(change == nil ? Color.secondary : movementColor)
+    }
+
+    private func accountRow(_ slice: PortfolioSlice, compact: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 7) {
+                Circle()
+                    .fill(DS.Color.accent(slice.accentIndex))
+                    .frame(width: compact ? 6 : 8, height: compact ? 6 : 8)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(slice.name)
+                        .font((compact ? Font.caption2 : .caption).weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                    Text(accountMeaning(slice))
+                        .font(.system(size: compact ? 8 : 9))
+                        .foregroundStyle(slice.isLiability
+                                         ? DS.Color.negativeCream : .secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 3)
+                Text(Fmt.huf(slice.valueHUF))
+                    .font((compact ? Font.caption2 : .caption).weight(.bold).monospacedDigit())
+                    .foregroundStyle(slice.isLiability ? DS.Color.negativeCream : .primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.62)
+            }
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(DS.Color.accent(slice.accentIndex).opacity(0.13))
+                    Capsule().fill(DS.Color.accent(slice.accentIndex))
+                        .frame(width: max(geo.size.width * slice.weight, 2))
+                }
+            }
+            .frame(height: compact ? 2.5 : 3)
+        }
+    }
+
+    private func accountMeaning(_ slice: PortfolioSlice) -> String {
+        if slice.isLiability { return "tartozás · \(Fmt.percentPlain(slice.weight * 100))" }
+        if slice.isTransactional { return "folyószámla · \(Fmt.percentPlain(slice.weight * 100))" }
+        if let gain = slice.gainPercent {
+            return "\(Fmt.percent(gain)) · \(Fmt.percentPlain(slice.weight * 100))"
+        }
+        return Fmt.percentPlain(slice.weight * 100)
     }
 }

@@ -357,8 +357,16 @@ final class EnableBankingService {
                                                   transactions: transactions))
                 }
                 let now = Date()
-                store.applyEnableBanking(EBSyncResult(bankName: session.aspsp.name,
-                                                      accounts: synced, syncedAt: now))
+                // Első összekötéskor és teljes előzmény letöltésekor a bank
+                // sok régi tételt ad vissza. Az nem „most történt", ezért csak
+                // egy korábban már szinkronizált kapcsolat növekményét jelezzük.
+                let shouldDetectMovements = connection.lastSync != nil && !fullHistory
+                let movements = store.applyEnableBanking(
+                    EBSyncResult(bankName: session.aspsp.name,
+                                 accounts: synced, syncedAt: now),
+                    detectNewTransactions: shouldDetectMovements
+                )
+                await ActivityNotifications.Banking.notify(movements)
                 connections[index].accountCount = synced.count
                 connections[index].lastSync = now
                 totalAccounts += synced.count
@@ -455,5 +463,4 @@ final class EnableBankingService {
         return UUID().uuidString
     }
 }
-
 

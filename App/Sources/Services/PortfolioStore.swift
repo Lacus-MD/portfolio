@@ -349,6 +349,20 @@ final class PortfolioStore {
         }
         quotes = refreshedQuotes
 
+        // Csak a most ténylegesen lekért árakból értesítünk — egy hálózati
+        // hibánál a gyorsítótár régi ±3%-a nem új esemény. Az azonos ISIN több
+        // számlán is állhat; az értesítés ettől még egyszer jelenjen meg.
+        var alertedISINs: Set<String> = []
+        let marketMoves = fetched.compactMap { item -> ActivityNotifications.Market.Move? in
+            guard let quote = item.quote, alertedISINs.insert(quote.isin).inserted,
+                  let holding = holdings.first(where: { $0.isin == quote.isin })
+            else { return nil }
+            return .init(id: "holding:\(quote.isin)", name: holding.name,
+                         symbol: holding.ticker, changePct: quote.changePercent,
+                         price: quote.price, currency: "EUR")
+        }
+        await ActivityNotifications.Market.notify(marketMoves)
+
         if !failures.isEmpty {
             lastError = "Nem sikerült frissíteni: " + failures.joined(separator: ", ")
         }
@@ -855,8 +869,13 @@ final class PortfolioStore {
     /// Az Enable Banking élő számlaadatait beolvasztja ugyanabba a modellbe,
     /// amelyet a kivonat-importok is használnak. A kézzel átsorolt kiadások
     /// itt is érintetlenek maradnak, az azonos tranzakció pedig nem duplázódik.
-    func applyEnableBanking(_ result: EBSyncResult) {
+    func applyEnableBanking(
+        _ result: EBSyncResult,
+        detectNewTransactions: Bool = false
+    ) -> [ActivityNotifications.Banking.Movement] {
+        let existingIDs = Set(expenses.map(\.id))
         var byID = Dictionary(uniqueKeysWithValues: expenses.map { ($0.id, $0) })
+        var newMovements: [ActivityNotifications.Banking.Movement] = []
         let bank = ExpenseCategorizer.normalize(result.bankName)
         let otp = bank.contains("OTP")
         let revolut = bank.contains("REVOLUT")
@@ -918,20 +937,30 @@ final class PortfolioStore {
                     ?? ExpenseEntry.makeID(account: platformID, date: date,
                                            amount: amountHUF, text: text)
                 if let existing = byID[key], existing.manualCategory { continue }
+                let merchant = ExpenseCategorizer.merchant(from: text)
                 byID[key] = ExpenseEntry(
                     id: key,
                     date: date,
                     amountHUF: amountHUF,
-                    merchant: ExpenseCategorizer.merchant(from: text),
+                    merchant: merchant,
                     category: ExpenseCategorizer.categorize(text),
                     account: platformID
                 )
+                if detectNewTransactions, !existingIDs.contains(key) {
+                    newMovements.append(.init(
+                        id: key,
+                        account: "\(result.bankName) · \(baseName)",
+                        merchant: merchant,
+                        amountHUF: amountHUF
+                    ))
+                }
             }
         }
 
         cashAssets.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         expenses = byID.values.sorted { $0.date > $1.date }
         save()
+        return newMovements
     }
 
     private func preferredBalance(_ balances: [EBBalance]) -> EBBalance? {

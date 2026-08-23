@@ -25,6 +25,8 @@ struct SettingsView: View {
     @State private var cardReminder = PaymentReminder.isEnabled
     @State private var statementReminder = Reminders.Statements.isEnabled
     @State private var consentReminder = Reminders.Consent.isEnabled
+    @State private var marketAlerts = ActivityNotifications.Market.isEnabled
+    @State private var bankAlerts = ActivityNotifications.Banking.isEnabled
     @State private var notificationsDenied = false
     /// A törlés visszavonhatatlan és tranzakciókat is elvisz, ezért kérdezünk.
     @State private var deletingPlatform: Platform?
@@ -149,6 +151,14 @@ struct SettingsView: View {
                 get: { consentReminder },
                 set: { updateConsentReminder($0) }
             ))
+            Toggle("Jelentős árfolyammozgás", isOn: Binding(
+                get: { marketAlerts },
+                set: { updateMarketAlerts($0) }
+            ))
+            Toggle("Banki pénzmozgás", isOn: Binding(
+                get: { bankAlerts },
+                set: { updateBankAlerts($0) }
+            ))
         } header: {
             Text("Értesítések")
         } footer: {
@@ -217,10 +227,41 @@ struct SettingsView: View {
         }
     }
 
+    private func updateMarketAlerts(_ enabled: Bool) {
+        marketAlerts = enabled
+        Task { @MainActor in
+            if enabled, await Reminders.requestPermission() == false {
+                marketAlerts = false
+                ActivityNotifications.Market.isEnabled = false
+                notificationsDenied = true
+                return
+            }
+            ActivityNotifications.Market.isEnabled = enabled
+        }
+    }
+
+    private func updateBankAlerts(_ enabled: Bool) {
+        bankAlerts = enabled
+        Task { @MainActor in
+            if enabled, await Reminders.requestPermission() == false {
+                bankAlerts = false
+                ActivityNotifications.Banking.isEnabled = false
+                notificationsDenied = true
+                return
+            }
+            ActivityNotifications.Banking.isEnabled = enabled
+        }
+    }
+
     private var notificationFooter: String {
         let statementDay = Reminders.Statements.dayOfMonth
         let consentLeadDays = Reminders.Consent.leadDays
-        return "Helyi értesítések: az időzítést az iOS tárolja, az app nem küld semmit sehova. A kártya-határidőről három nappal előbb, a kivonatokról minden hónap \(statementDay)-én, a banki engedély lejáratáról \(consentLeadDays) nappal előbb szólok — mindegyik reggel 9-kor."
+        return "Helyi értesítések: az app nem küld pénzügyi adatot sehova. "
+            + "A mozgásjelzés ±\(Fmt.percentPlain(ActivityNotifications.Market.thresholdPct, digits: 0)), "
+            + "a banki küszöb \(Fmt.huf(ActivityNotifications.Banking.thresholdHUF)). "
+            + "Ezek frissítéskor szólnak; a banki gyakoriságot a Bankkapcsolatnál állíthatod. "
+            + "Az emlékeztetők: kártya −3 nap, kivonat minden hónap \(statementDay)-én, "
+            + "engedély −\(consentLeadDays) nap, reggel 9-kor."
     }
 
     private var deletingPlatformTitle: String {

@@ -630,6 +630,19 @@ struct NewsView: View {
         let (fetchedItems, fetchedMovers) = await (feed, moved)
         items = fetchedItems
         movers = fetchedMovers
+        // Az alap ténylegesen követett nagy komponensei is portfólió-
+        // kitettségek. Ha valamelyik ±3%-ot mozdul, ugyanaz a zajszűrt,
+        // napi egyszeri értesítés jár neki, mint a közvetlen pozícióknak.
+        await ActivityNotifications.Market.notify(fetchedMovers.map { mover in
+            .init(
+                id: "constituent:\(mover.isin ?? mover.ticker ?? mover.name)",
+                name: mover.name,
+                symbol: mover.ticker ?? mover.name,
+                changePct: mover.changePct,
+                price: mover.price,
+                currency: "EUR"
+            )
+        })
         NewsImagePreloader.shared.prefetch(
             items.compactMap { $0.imageURL.flatMap(URL.init(string:)) }
         )

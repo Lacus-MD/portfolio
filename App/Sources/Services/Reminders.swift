@@ -1,6 +1,21 @@
 import Foundation
 import UserNotifications
 
+/// Előtérben is megmutatja az eseményértesítéseket. Delegált nélkül az iOS
+/// csendben elnyeli a bannert, amíg az app nyitva van — épp akkor, amikor egy
+/// kézi frissítés eredménye megérkezik.
+final class PortfolioNotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
+    static let shared = PortfolioNotificationDelegate()
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .sound])
+    }
+}
+
 /// Helyi értesítések, amiket az app maga időzít.
 ///
 /// Nincs mögöttük szerver: az időzítést az iOS tárolja, az app nem küld
@@ -114,6 +129,152 @@ enum Reminders {
                 try? await center.add(UNNotificationRequest(
                     identifier: prefix + connection.sessionID,
                     content: content, trigger: trigger))
+            }
+        }
+    }
+}
+
+// MARK: - Eseményvezérelt értesítések
+
+/// Az időzített emlékeztetőkkel szemben ezek akkor születnek, amikor egy
+/// frissítés valódi, jelentős változást talál. Nincs push-szerver: az app az
+/// iOS által adott előtér- vagy háttér-frissítési alkalommal ellenőriz.
+enum ActivityNotifications {
+    private static func hasAuthorization() async -> Bool {
+        let status = await UNUserNotificationCenter.current().notificationSettings()
+            .authorizationStatus
+        return status == .authorized || status == .provisional || status == .ephemeral
+    }
+
+    /// Napon belül ugyanarra az instrumentumra és irányra csak egyszer
+    /// szólunk. Az árfolyamforrás egy frissítés közben többször is előkerülhet
+    /// (közvetlen pozíció, híroldali komponens), ez nem két esemény.
+    private static func shouldSend(key: String, storageKey: String,
+                                   now: Date = Date()) -> Bool {
+        let defaults = UserDefaults.standard
+        var sent = defaults.dictionary(forKey: storageKey)?.compactMapValues {
+            ($0 as? NSNumber)?.doubleValue
+        } ?? [:]
+        let cutoff = now.addingTimeInterval(-3 * 24 * 3600).timeIntervalSince1970
+        sent = sent.filter { $0.value >= cutoff }
+        guard sent[key] == nil else {
+            defaults.set(sent, forKey: storageKey)
+            return false
+        }
+        sent[key] = now.timeIntervalSince1970
+        defaults.set(sent, forKey: storageKey)
+        return true
+    }
+
+    private static func safeKey(_ value: String) -> String {
+        value.lowercased().unicodeScalars.map {
+            CharacterSet.alphanumerics.contains($0) ? String($0) : "-"
+        }.joined()
+    }
+
+    private static func price(_ value: Decimal, currency: String) -> String {
+        switch currency.uppercased() {
+        case "HUF": Fmt.huf(value)
+        case "EUR": Fmt.eur(value)
+        default: "\(Fmt.decimal(value, min: 2, max: 2)) \(currency.uppercased())"
+        }
+    }
+
+    enum Market {
+        struct Move: Sendable {
+            let id: String
+            let name: String
+            let symbol: String
+            let changePct: Double
+            let price: Decimal
+            let currency: String
+        }
+
+        static let thresholdPct = 3.0
+        private static let enabledKey = "marketMovementNotificationsOn"
+        private static let sentKey = "marketMovementNotificationsSent"
+
+        static var isEnabled: Bool {
+            get { UserDefaults.standard.bool(forKey: enabledKey) }
+            set { UserDefaults.standard.set(newValue, forKey: enabledKey) }
+        }
+
+        static func notify(_ moves: [Move]) async {
+            guard isEnabled, await hasAuthorization() else { return }
+            let day = ConstituentWatcher.dayKey(Date())
+            let significant = moves.filter { abs($0.changePct) >= thresholdPct }
+                .sorted { abs($0.changePct) > abs($1.changePct) }
+                .prefix(6)
+
+            for move in significant {
+                guard !Task.isCancelled else { return }
+                let direction = move.changePct >= 0 ? "up" : "down"
+                let key = "\(day)|\(safeKey(move.id))|\(direction)"
+                guard shouldSend(key: key, storageKey: sentKey) else { continue }
+
+                let content = UNMutableNotificationContent()
+                content.title = move.changePct >= 0
+                    ? "\(move.symbol) jelentősen emelkedik"
+                    : "\(move.symbol) jelentősen esik"
+                content.body = "\(move.name): \(Fmt.percent(move.changePct)) ma · "
+                    + "most \(price(move.price, currency: move.currency))."
+                content.sound = .default
+                content.interruptionLevel = .active
+                content.userInfo = ["kind": "market", "instrument": move.id]
+
+                let request = UNNotificationRequest(
+                    identifier: "market-\(day)-\(safeKey(move.id))-\(direction)",
+                    content: content,
+                    trigger: UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+                )
+                try? await UNUserNotificationCenter.current().add(request)
+            }
+        }
+    }
+
+    enum Banking {
+        struct Movement: Sendable {
+            let id: String
+            let account: String
+            let merchant: String
+            let amountHUF: Decimal
+        }
+
+        static let thresholdHUF: Decimal = 25_000
+        private static let enabledKey = "bankMovementNotificationsOn"
+        private static let sentKey = "bankMovementNotificationsSent"
+
+        static var isEnabled: Bool {
+            get { UserDefaults.standard.bool(forKey: enabledKey) }
+            set { UserDefaults.standard.set(newValue, forKey: enabledKey) }
+        }
+
+        static func notify(_ movements: [Movement]) async {
+            guard isEnabled, await hasAuthorization() else { return }
+            let significant = movements.filter { abs($0.amountHUF) >= thresholdHUF }
+                .sorted { abs($0.amountHUF) > abs($1.amountHUF) }
+                .prefix(8)
+
+            for movement in significant {
+                guard !Task.isCancelled else { return }
+                let key = safeKey(movement.id)
+                guard shouldSend(key: key, storageKey: sentKey) else { continue }
+
+                let incoming = movement.amountHUF > 0
+                let content = UNMutableNotificationContent()
+                content.title = incoming ? "Jóváírás érkezett" : "Nagyobb terhelés történt"
+                content.body = "\(incoming ? "+" : "−")\(Fmt.huf(abs(movement.amountHUF))) · "
+                    + "\(movement.merchant) · \(movement.account)"
+                content.sound = .default
+                content.interruptionLevel = .active
+                content.userInfo = ["kind": "bank", "transaction": movement.id]
+
+                let request = UNNotificationRequest(
+                    identifier: "bank-\(key)",
+                    content: content,
+                    trigger: UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+                )
+                try? await UNUserNotificationCenter.current().add(request)
             }
         }
     }

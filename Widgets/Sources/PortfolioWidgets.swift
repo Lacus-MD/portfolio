@@ -31,7 +31,7 @@ struct PortfolioValueWidget: Widget {
                 .containerBackground(.fill.tertiary, for: .widget)
         }
         .configurationDisplayName("Portfólió értéke")
-        .description("Mennyit ér most a számlád forintban, és mennyi a hozam.")
+        .description("Pontos nettó vagyon, napi változás és portfóliótrend.")
         .supportedFamilies([
             .systemSmall, .systemMedium,
             .accessoryInline, .accessoryCircular, .accessoryRectangular,
@@ -45,8 +45,8 @@ struct PortfolioBreakdownWidget: Widget {
             BreakdownWidgetView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("A számla megoszlása")
-        .description("Melyik alap mekkora részt foglal, és hogyan teljesít.")
+        .configurationDisplayName("Pénzügyi pillanatkép")
+        .description("Pontos nettó vagyon, napi változás, számlaegyenlegek és tartozások.")
         .supportedFamilies([.systemMedium, .systemLarge])
     }
 }

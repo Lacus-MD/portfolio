@@ -1,5 +1,6 @@
 import SwiftUI
 import BackgroundTasks
+import UserNotifications
 
 @main
 struct PortfolioApp: App {
@@ -17,6 +18,8 @@ struct PortfolioApp: App {
                                          banking: EnableBankingService)?
 
     init() {
+        // A frissítés közben talált nagy mozgás előtérben is látható legyen.
+        UNUserNotificationCenter.current().delegate = PortfolioNotificationDelegate.shared
         // Korán aktiválunk: a párosítás felépítése időbe telik, és az első
         // mentés már működő munkamenetet találjon.
         WatchBridge.shared.activate()
@@ -115,6 +118,10 @@ struct PortfolioApp: App {
                 // az első feloldás után. Zárolt telefonon frissen indított
                 // eszközön kimarad, és az nem baj: legközelebb megy.
                 let pair = live ?? (PortfolioStore(), EnableBankingService())
+                // A napi háttérlehetőség a piaci mozgásokat is ellenőrzi.
+                // Az iOS időpontot nem garantál, de ehhez nem kell nyitva
+                // hagyni az appot.
+                await pair.store.refresh()
                 await pair.banking.syncIfStale(store: pair.store)
 
                 task.setTaskCompleted(success: true)

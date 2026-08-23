@@ -15,9 +15,15 @@ struct PortfolioSlice: Identifiable {
     /// A platform akcentusának sorszáma. Enélkül a widgeten minden sáv
     /// ugyanaz a szín volt, és a sávok nem jelentettek semmit.
     let accentIndex: Int
+    let kind: Platform.Kind
     let weight: Double
     let valueHUF: Decimal
-    let gainPercent: Double
+    /// Csak befektetésnél értelmes. Folyószámlán az egyenleg változása nem
+    /// hozam, hitelkártyán pedig tartozás van — ezért ott szándékosan `nil`.
+    let gainPercent: Double?
+
+    var isLiability: Bool { kind == .credit }
+    var isTransactional: Bool { kind == .current }
 }
 
 struct PortfolioEntry: TimelineEntry {
@@ -25,7 +31,9 @@ struct PortfolioEntry: TimelineEntry {
     var valueEUR: Decimal = 0
     var costEUR: Decimal = 0
     var fxRate: Decimal = 0
-    var dayChangeEUR: Decimal?
+    /// A teljes nettó vagyon változása az előző napi méréshez képest.
+    /// Forintban marad: ebben a bankszámla és a tartozás is benne van.
+    var dayChangeHUF: Decimal?
     var slices: [PortfolioSlice] = []
     /// Napi ÖSSZVAGYON a szikragörbéhez, FORINTBAN — ugyanaz a sorozat,
     /// amiből a kezdőképernyő közös görbéje épül. Korábban az értékpapírok
@@ -36,6 +44,13 @@ struct PortfolioEntry: TimelineEntry {
     var netHUF: Decimal = 0
     /// Összes befizetés — a „kezdetektől" hozam alapja, ahogy a brókernél is.
     var depositsHUF: Decimal = 0
+    /// Csak azok az eszközök, amelyeknél értelmes a hozam: értékpapír és
+    /// kamatozó megtakarítás. A folyószámla és a hitelkártya kimarad.
+    var investableHUF: Decimal = 0
+    /// Minden pozitív számlaegyenleg, a napi pénzügyi helyzet összegzéséhez.
+    var grossAssetsHUF: Decimal = 0
+    /// Tartozások pozitív számként.
+    var liabilitiesHUF: Decimal = 0
 
     /// Igaz, ha ezt a bejegyzést friss hálózati lekérés töltötte fel.
     /// Hamis = az app utolsó mentéséből olvastuk.
@@ -43,13 +58,20 @@ struct PortfolioEntry: TimelineEntry {
     var asOf: Date?
     var hasHoldings: Bool = true
 
-    var valueHUF: Decimal { netHUF > 0 ? netHUF : valueEUR * fxRate }
+    var valueHUF: Decimal {
+        // A nettó vagyon lehet nulla vagy negatív is. A korábbi `> 0`
+        // ellenőrzés ilyenkor visszaváltott a csak-értékpapír értékre, és
+        // pont a tartozást tüntette el. A régi, összetevők nélküli mentésnél
+        // marad csak az eurós tartalék.
+        if !slices.isEmpty || grossAssetsHUF != 0 || liabilitiesHUF != 0 { return netHUF }
+        return valueEUR * fxRate
+    }
     var gainEUR: Decimal { valueEUR - costEUR }
 
     /// Hozam a befizetésekhez mérve — a brókerrel egyező mérce.
     var gainVsDeposits: Decimal? {
-        guard depositsHUF > 0, netHUF > 0 else { return nil }
-        return netHUF - depositsHUF
+        guard depositsHUF > 0, investableHUF > 0 else { return nil }
+        return investableHUF - depositsHUF
     }
     var gainVsDepositsPct: Double? {
         guard let gain = gainVsDeposits, depositsHUF > 0 else { return nil }
@@ -68,14 +90,19 @@ struct PortfolioEntry: TimelineEntry {
         var e = PortfolioEntry()
         e.valueEUR = 2_032; e.costEUR = 2_038; e.fxRate = 365.1
         e.netHUF = 887_909; e.depositsHUF = 875_800
-        e.dayChangeEUR = 142
+        e.dayChangeHUF = 5_123
+        e.investableHUF = 860_900
+        e.grossAssetsHUF = 912_909
+        e.liabilitiesHUF = 25_000
         e.slices = [
-            .init(id: "a", name: "TBSZ 2026", accentIndex: 0,
-                  weight: 0.62, valueHUF: 550_500, gainPercent: 0.9),
-            .init(id: "b", name: "Revolut Savings", accentIndex: 1,
-                  weight: 0.35, valueHUF: 310_400, gainPercent: 0.1),
-            .init(id: "c", name: "Revolut", accentIndex: 2,
-                  weight: 0.03, valueHUF: 27_009, gainPercent: 0),
+            .init(id: "a", name: "TBSZ 2026", accentIndex: 0, kind: .brokerage,
+                  weight: 0.60, valueHUF: 550_500, gainPercent: 0.9),
+            .init(id: "b", name: "Revolut Savings", accentIndex: 1, kind: .savings,
+                  weight: 0.34, valueHUF: 310_400, gainPercent: 0.1),
+            .init(id: "c", name: "OTP Folyószámla", accentIndex: 2, kind: .current,
+                  weight: 0.06, valueHUF: 52_009, gainPercent: nil),
+            .init(id: "d", name: "OTP Hitelkártya", accentIndex: 3, kind: .credit,
+                  weight: 0.03, valueHUF: -25_000, gainPercent: nil),
         ]
         e.sparkline = [845_000, 852_000, 849_000, 861_000, 858_000, 872_000, 881_000, 887_909]
         return e
@@ -87,7 +114,9 @@ struct PortfolioEntry: TimelineEntry {
     /// hogy a widget ne tegyen úgy, mintha friss adatot mutatna.
     static func make() async -> PortfolioEntry {
         let payload = PortfolioFile.load()
-        guard !payload.holdings.isEmpty else {
+        let hasFinancialData = !payload.holdings.isEmpty
+            || !payload.cashAssets.isEmpty || !payload.cash.isEmpty
+        guard hasFinancialData else {
             var empty = PortfolioEntry()
             empty.hasHoldings = false
             return empty
@@ -136,12 +165,21 @@ struct PortfolioEntry: TimelineEntry {
                                                              in: payload, prices: live)
         }
         let netHUF = perPlatform.values.reduce(Decimal(0), +)
+        let totalMagnitude = perPlatform.values.reduce(Decimal(0)) { $0 + abs($1) }
+        let investableHUF = platforms.filter(\.hasMeaningfulGain).reduce(Decimal(0)) {
+            $0 + (perPlatform[$1.id] ?? 0)
+        }
+        let grossAssetsHUF = perPlatform.values.filter { $0 > 0 }.reduce(Decimal(0), +)
+        let liabilitiesHUF = -perPlatform.values.filter { $0 < 0 }.reduce(Decimal(0), +)
 
         var entry = PortfolioEntry()
         entry.netHUF = netHUF
         // A belső átvezetések NEM új pénz — ugyanaz a szabály, mint az appban.
         // Nyersen összeadva a befizetést a hozam hamisan romlana.
         entry.depositsHUF = PortfolioMath.depositsHUF(payload)
+        entry.investableHUF = investableHUF
+        entry.grossAssetsHUF = grossAssetsHUF
+        entry.liabilitiesHUF = liabilitiesHUF
         entry.valueEUR = total
         entry.costEUR = cost
         entry.fxRate = fx
@@ -149,22 +187,27 @@ struct PortfolioEntry: TimelineEntry {
         entry.asOf = isLive ? Date() : payload.lastRefresh
         entry.slices = platforms.compactMap { platform -> PortfolioSlice? in
             let value = perPlatform[platform.id] ?? 0
-            guard value > 0 else { return nil }
+            guard abs(value.doubleValue) >= 1 else { return nil }
             let deposits = PortfolioMath.depositsHUF(ofPlatform: platform.id, in: payload)
             return PortfolioSlice(
                 id: platform.id,
                 name: platform.name,
                 accentIndex: platform.accent.index,
-                weight: netHUF > 0 ? (value / netHUF).doubleValue : 0,
+                kind: platform.kind,
+                weight: totalMagnitude > 0 ? (abs(value) / totalMagnitude).doubleValue : 0,
                 valueHUF: value,
-                gainPercent: deposits > 0 ? ((value - deposits) / deposits).doubleValue * 100 : 0
+                gainPercent: platform.hasMeaningfulGain && deposits > 0
+                    ? ((value - deposits) / deposits).doubleValue * 100 : nil
             )
         }
         .sorted { $0.weight > $1.weight }
 
         let today = Calendar.current.startOfDay(for: Date())
         if let previous = payload.snapshots.filter({ $0.date < today }).max(by: { $0.date < $1.date }) {
-            entry.dayChangeEUR = total - previous.valueEUR
+            let previousHUF = previous.byPlatform.isEmpty
+                ? previous.valueEUR * previous.fxRate
+                : previous.byPlatform.values.reduce(Decimal(0), +)
+            entry.dayChangeHUF = netHUF - previousHUF
         }
 
         // A widget MENTI is a napi mérést, nem csak megjeleníti.
