@@ -7,6 +7,8 @@ import Foundation
 /// NEM kap team-prefixet (macOS-en kapna — ott a sandbox megköveteli).
 enum PortfolioFile {
     static var appGroupID: String { AppGroup.id }
+    /// Increment only when a payload migration is added and covered by tests.
+    static let currentSchemaVersion = 1
 
     /// Mi történt betöltéskor. A hívónak tudnia kell, mert az „üres" és a
     /// „nem sikerült elolvasni" két teljesen más helyzet: az elsőre menteni
@@ -19,6 +21,8 @@ enum PortfolioFile {
     }
 
     struct Payload: Codable, @unchecked Sendable {
+        /// Explicit on-disk format marker. Missing in Build 20 and earlier.
+        var schemaVersion: Int = PortfolioFile.currentSchemaVersion
         var holdings: [Holding] = []
         var snapshots: [Snapshot] = []
         /// Forintos befizetések — az XIRR alapja.
@@ -94,6 +98,7 @@ enum PortfolioFile {
         /// mentett állományt, és a rákövetkező mentés felülírta a jó adatot.
         init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
+            schemaVersion     = try c.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 0
             holdings         = try c.decodeIfPresent([Holding].self,          forKey: .holdings) ?? []
             snapshots        = try c.decodeIfPresent([Snapshot].self,         forKey: .snapshots) ?? []
             deposits         = try c.decodeIfPresent([Deposit].self,          forKey: .deposits) ?? []
@@ -165,9 +170,23 @@ enum PortfolioFile {
         URL.applicationSupportDirectory.appending(path: "portfolio.json")
     }
 
+    /// Decodes every supported on-disk version and upgrades the unversioned
+    /// Build 20 shape explicitly before it can be written back.
+    static func decodePayload(_ data: Data) throws -> Payload {
+        var payload = try JSONDecoder().decode(Payload.self, from: data)
+        guard payload.schemaVersion <= currentSchemaVersion else {
+            throw NSError(domain: "PortfolioFile", code: 2,
+                          userInfo: [NSLocalizedDescriptionKey: "Unsupported portfolio schema version"])
+        }
+        if payload.schemaVersion == 0 {
+            payload.schemaVersion = currentSchemaVersion
+        }
+        return payload
+    }
+
     private static func decode(_ url: URL?) -> Payload? {
         guard let url, let data = try? Data(contentsOf: url), !data.isEmpty else { return nil }
-        return try? JSONDecoder().decode(Payload.self, from: data)
+        return try? decodePayload(data)
     }
 
     /// Betöltés a sérülés megkülönböztetésével.

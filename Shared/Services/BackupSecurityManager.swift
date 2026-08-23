@@ -143,3 +143,33 @@ enum BackupSecurityManager {
         ]
     }
 }
+
+/// Pure AES-GCM envelope used by tests and future storage adapters. The
+/// production manager supplies its Keychain-backed key; tests can inject a
+/// deterministic key without touching Keychain.
+struct BackupCipher {
+    private let key: SymmetricKey
+
+    init(keyData: Data) {
+        key = SymmetricKey(data: keyData)
+    }
+
+    func encrypt(_ payload: PortfolioFile.Payload) throws -> Data {
+        let raw = try JSONEncoder().encode(payload)
+        guard let sealed = try? AES.GCM.seal(raw, using: key),
+              let combined = sealed.combined else {
+            throw BackupSecurityManager.Error.encryption
+        }
+        return combined
+    }
+
+    func decrypt(_ data: Data) throws -> PortfolioFile.Payload {
+        do {
+            let sealed = try AES.GCM.SealedBox(combined: data)
+            let raw = try AES.GCM.open(sealed, using: key)
+            return try PortfolioFile.decodePayload(raw)
+        } catch {
+            throw BackupSecurityManager.Error.decryption
+        }
+    }
+}
