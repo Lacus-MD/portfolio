@@ -109,6 +109,10 @@ implementációs része lezárható, de a státuszban és a jelentésben külön
 **kell tüntetni**, hogy a fizikai telepítés, a tag és a TestFlight-megfigyelés
 halasztva marad.
 
+Ha a CoreSimulatorService sem érhető el, a unit- és UI-tesztek futtatása helyett
+a tesztcélpontok fordítását kell elvégezni, és ezt külön kell jelölni a
+jelentésben; ez nem helyettesíti a későbbi futásidejű ellenőrzést.
+
 ### 4.3 Biztonsági korlátok
 
 - Ne használj valódi banki kivonatot vagy személyes adatot tesztfixture-ként.

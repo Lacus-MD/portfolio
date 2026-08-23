@@ -11,6 +11,8 @@ run without bank credentials, signing secrets, or a connected phone.
 - [x] Build number is read from the generated app bundle Info.plist.
 - [x] `git diff --check` passes.
 - [x] Importer fixtures contain no personal or bank data.
+- [ ] Runtime unit/UI tests — deferred because CoreSimulatorService cannot
+  provide a simulator in this environment; the unit-test target compiles.
 - [ ] Physical iPhone installation and smoke test — deferred because the
   configured device is unavailable.
 - [ ] Five-to-seven-day TestFlight observation — deferred until a device and
