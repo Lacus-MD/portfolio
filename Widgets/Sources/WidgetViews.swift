@@ -218,205 +218,345 @@ struct ValueWidgetView: View {
     }
 }
 
-/// Pénzügyi pillanatkép: pontos nettó vagyon, napi változás, számlaegyenlegek
-/// és tartozások. A korábbi „megoszlás" nézet sok üres helyet hagyott, csak
-/// rövidített végösszeget írt ki, és a folyószámlára hamis hozamot számolt.
-struct BreakdownWidgetView: View {
-    @Environment(\.widgetFamily) private var environmentFamily
-    let entry: PortfolioEntry
-    var familyOverride: WidgetFamily?
-    private var family: WidgetFamily { familyOverride ?? environmentFamily }
+/// A widget saját palettája. A widget-bővítmény külön folyamat, ezért itt az
+/// idővonal-bejegyzésben kapott témából és a rendszer világos/sötét módjából
+/// építjük fel ugyanazokat a szerepeket, amelyeket az app is használ.
+private struct WidgetPalette {
+    let theme: AppTheme
+    let scheme: ColorScheme
 
-    private var visibleCount: Int { family == .systemLarge ? 5 : 3 }
-    private var movementColor: Color {
-        DS.Color.sign(entry.dayChangeHUF?.doubleValue ?? entry.displayGainPct)
+    var card: Color { Color(hex: scheme == .dark ? theme.cardDark : theme.cardLight) }
+    var ink: Color { Color(hex: scheme == .dark ? theme.inkDark : theme.inkLight) }
+    var secondaryInk: Color { ink.opacity(scheme == .dark ? 0.62 : 0.50) }
+    var positive: Color { Color(hex: theme.positive) }
+    var negative: Color { Color(hex: theme.negative) }
+
+    func accent(_ index: Int) -> Color {
+        guard !theme.accents.isEmpty else { return Color(hex: 0xD09ECB) }
+        return Color(hex: theme.accents[index % theme.accents.count])
     }
 
-    var body: some View {
-        if !entry.hasHoldings {
-            ValueWidgetView(entry: entry)
-        } else if family == .systemLarge {
-            largeView
-        } else {
-            mediumView
+    func inkOnAccent(_ index: Int) -> Color {
+        guard !theme.inkOnAccents.isEmpty else { return ink }
+        return Color(hex: theme.inkOnAccents[index % theme.inkOnAccents.count])
+    }
+}
+
+/// Pénzügyi pillanatkép: a nettó vagyon után azonnal a teljes számlaeloszlást
+/// mutatja. A négy pozitív számla pontos összege kifér, a hitelkártya pedig
+/// külön, visszafogott tartozássávot kap — nincs félreérthető hozamszázalék,
+/// eszközösszesítő vagy +/− ikon.
+struct BreakdownWidgetView: View {
+    @Environment(\.widgetFamily) private var environmentFamily
+    @Environment(\.colorScheme) private var colorScheme
+
+    let entry: PortfolioEntry
+    var familyOverride: WidgetFamily?
+
+    private var family: WidgetFamily { familyOverride ?? environmentFamily }
+    private var palette: WidgetPalette { WidgetPalette(theme: entry.theme, scheme: colorScheme) }
+
+    private var positiveSlices: [PortfolioSlice] {
+        entry.slices.filter { !$0.isLiability }.sorted { lhs, rhs in
+            let leftRank = accountRank(lhs.kind)
+            let rightRank = accountRank(rhs.kind)
+            if leftRank != rightRank { return leftRank < rightRank }
+            return lhs.valueHUF > rhs.valueHUF
         }
     }
 
+    private var liabilitySlices: [PortfolioSlice] {
+        entry.slices.filter(\.isLiability).sorted { abs($0.valueHUF) > abs($1.valueHUF) }
+    }
+
+    private var orderedSlices: [PortfolioSlice] { positiveSlices + liabilitySlices }
+
+    var body: some View {
+        Group {
+            if !entry.hasHoldings {
+                emptyState
+            } else if family == .systemLarge {
+                largeView
+            } else {
+                mediumView
+            }
+        }
+        .foregroundStyle(palette.ink)
+        .containerBackground(palette.card, for: .widget)
+    }
+
     private var largeView: some View {
-        VStack(alignment: .leading, spacing: 11) {
-            hero
+        VStack(alignment: .leading, spacing: 0) {
+            header
 
-            HStack(alignment: .firstTextBaseline) {
-                Text("SZÁMLÁK")
-                    .font(.system(size: 10, weight: .bold))
-                    .tracking(0.9)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Text("\(entry.slices.count) egyenleg")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
+            Text(Fmt.huf(entry.valueHUF))
+                .font(.system(size: 34, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .minimumScaleFactor(0.60)
+                .lineLimit(1)
+                .padding(.top, 5)
 
-            VStack(spacing: 8) {
-                ForEach(entry.slices.prefix(visibleCount)) { slice in
-                    accountRow(slice, compact: false)
+            daySummary
+                .padding(.top, 6)
+
+            HStack(alignment: .center, spacing: 14) {
+                AllocationRing(slices: orderedSlices, palette: palette)
+                    .frame(width: 126, height: 126)
+                    .accessibilityLabel("\(entry.slices.count) számla eloszlása")
+
+                VStack(spacing: 4) {
+                    ForEach(positiveSlices.prefix(4)) { slice in
+                        accountRow(slice, compact: false)
+                    }
                 }
+                .frame(maxWidth: .infinity)
             }
+            .frame(maxHeight: .infinity)
+            .padding(.top, 9)
 
-            Spacer(minLength: 0)
-            if entry.liabilitiesHUF > 0 {
-                HStack(spacing: 5) {
-                    Label(Fmt.huf(entry.grossAssetsHUF), systemImage: "plus.circle.fill")
-                        .foregroundStyle(DS.Color.positiveGreen)
-                    Spacer(minLength: 4)
-                    Label("−" + Fmt.huf(entry.liabilitiesHUF),
-                          systemImage: "minus.circle.fill")
-                        .foregroundStyle(DS.Color.negativeCream)
-                }
-                .font(.caption2.weight(.semibold).monospacedDigit())
+            if let liability = liabilitySlices.first {
+                liabilityRow(liability)
+                    .padding(.top, 7)
             }
         }
     }
 
     private var mediumView: some View {
-        HStack(alignment: .top, spacing: 13) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 4) {
-                    Text("NETTÓ VAGYON")
-                        .font(.system(size: 9, weight: .bold))
-                        .tracking(0.7)
-                        .foregroundStyle(.secondary)
-                    freshnessIcon
-                }
-                Text(Fmt.huf(entry.valueHUF))
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .minimumScaleFactor(0.55)
-                    .lineLimit(1)
-                    .widgetAccentable()
-                dayChange
-                Spacer(minLength: 2)
-                Sparkline(values: entry.sparkline, tint: movementColor)
-                    .frame(height: 38)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading, spacing: 0) {
+            header
 
-            VStack(spacing: 8) {
-                ForEach(entry.slices.prefix(visibleCount)) { slice in
-                    accountRow(slice, compact: true)
+            HStack(alignment: .center, spacing: 10) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(Fmt.huf(entry.valueHUF))
+                        .font(.system(size: 21, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .minimumScaleFactor(0.55)
+                        .lineLimit(1)
+                    daySummary
+                    if let liability = liabilitySlices.first {
+                        Text("\(displayName(liability)) · \(Fmt.huf(abs(liability.valueHUF))) tartozás")
+                            .font(.system(size: 8.5, weight: .semibold))
+                            .foregroundStyle(palette.negative)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.65)
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                AllocationRing(slices: orderedSlices, palette: palette)
+                    .frame(width: 72, height: 72)
+
+                VStack(spacing: 3) {
+                    ForEach(positiveSlices.prefix(2)) { slice in
+                        accountRow(slice, compact: true)
+                    }
+                }
+                .frame(width: 112)
             }
-            .frame(width: 154)
+            .frame(maxHeight: .infinity)
+            .padding(.top, 5)
         }
     }
 
-    private var hero: some View {
-        ZStack(alignment: .topLeading) {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(.linearGradient(
-                    colors: [DS.Color.coral.opacity(0.25),
-                             DS.Color.lilac.opacity(0.18),
-                             DS.Color.mint.opacity(0.12)],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
-                ))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .strokeBorder(.white.opacity(0.28), lineWidth: 0.8)
-                }
-
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 4) {
-                    Text("NETTÓ VAGYON")
-                        .font(.system(size: 10, weight: .bold))
-                        .tracking(0.9)
-                        .foregroundStyle(.secondary)
-                    freshnessIcon
-                    Spacer()
-                    Text(Fmt.time(entry.asOf ?? entry.date))
-                        .font(.caption2.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                }
-                Text(Fmt.huf(entry.valueHUF))
-                    .font(.system(size: 30, weight: .bold, design: .rounded))
-                    .minimumScaleFactor(0.65)
-                    .lineLimit(1)
-                    .widgetAccentable()
-                HStack(alignment: .bottom) {
-                    dayChange
-                    Spacer(minLength: 10)
-                    Sparkline(values: entry.sparkline, tint: movementColor)
-                        .frame(width: 112, height: 38)
-                }
-            }
-            .padding(14)
+    private var header: some View {
+        HStack(spacing: 5) {
+            Text("PORTFÓLIÓ")
+                .font(.system(size: 10, weight: .bold))
+                .tracking(1.2)
+            freshnessMark
+            Spacer(minLength: 8)
+            Text("Frissítve \(Fmt.time(entry.asOf ?? entry.date))")
+                .font(.system(size: 9.5, weight: .medium).monospacedDigit())
         }
-        .frame(height: 122)
+        .foregroundStyle(palette.secondaryInk)
     }
 
-    @ViewBuilder private var freshnessIcon: some View {
+    @ViewBuilder private var freshnessMark: some View {
         if entry.isLive {
-            Circle().fill(DS.Color.positiveGreen).frame(width: 5, height: 5)
+            Circle()
+                .fill(palette.positive)
+                .frame(width: 6, height: 6)
+                .accessibilityLabel("Friss adat")
         } else {
             Image(systemName: "clock.badge.exclamationmark")
-                .font(.system(size: 8))
-                .foregroundStyle(.secondary)
+                .font(.system(size: 8, weight: .semibold))
+                .accessibilityLabel("Mentett adat")
         }
     }
 
-    private var dayChange: some View {
-        let change = entry.dayChangeHUF
-        return HStack(spacing: 4) {
-            Image(systemName: (change ?? 0) >= 0 ? "arrow.up.right" : "arrow.down.right")
-                .font(.system(size: 9, weight: .bold))
-            Text(change.map { "Ma " + ($0 >= 0 ? "+" : "") + Fmt.huf($0) }
-                 ?? "Még nincs tegnapi mérés")
-                .font(.caption.weight(.semibold).monospacedDigit())
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+    private var daySummary: some View {
+        HStack(spacing: 8) {
+            if let change = entry.dayChangeHUF {
+                HStack(spacing: 4) {
+                    Image(systemName: change >= 0 ? "arrow.up.right" : "arrow.down.right")
+                        .font(.system(size: 8, weight: .bold))
+                    Text("Ma " + (change > 0 ? "+" : "") + Fmt.huf(change))
+                        .font(.system(size: 10.5, weight: .bold).monospacedDigit())
+                }
+                .foregroundStyle(change >= 0 ? palette.positive : palette.negative)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 6)
+                .background((change >= 0 ? palette.positive : palette.negative).opacity(0.12),
+                            in: Capsule())
+            } else {
+                Text("Nincs tegnapi mérés")
+                    .font(.system(size: 9.5, weight: .semibold))
+                    .foregroundStyle(palette.secondaryInk)
+            }
+
+            Text("nettó vagyon")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(palette.secondaryInk)
         }
-        .foregroundStyle(change == nil ? Color.secondary : movementColor)
     }
 
     private func accountRow(_ slice: PortfolioSlice, compact: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack(spacing: 7) {
-                Circle()
-                    .fill(DS.Color.accent(slice.accentIndex))
-                    .frame(width: compact ? 6 : 8, height: compact ? 6 : 8)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(slice.name)
-                        .font((compact ? Font.caption2 : .caption).weight(.semibold))
+        HStack(spacing: compact ? 6 : 8) {
+            ZStack {
+                RoundedRectangle(cornerRadius: compact ? 7 : 9, style: .continuous)
+                    .fill(palette.accent(slice.accentIndex))
+                Text(slice.monogram)
+                    .font(.system(size: compact ? 7 : 8.5, weight: .bold, design: .rounded))
+                    .foregroundStyle(palette.inkOnAccent(slice.accentIndex))
+                    .minimumScaleFactor(0.65)
+                    .lineLimit(1)
+                    .padding(3)
+            }
+            .frame(width: compact ? 22 : 29, height: compact ? 22 : 29)
+
+            if compact {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(displayName(slice))
+                        .font(.system(size: 8.5, weight: .semibold))
                         .lineLimit(1)
-                        .minimumScaleFactor(0.72)
-                    Text(accountMeaning(slice))
-                        .font(.system(size: compact ? 8 : 9))
-                        .foregroundStyle(slice.isLiability
-                                         ? DS.Color.negativeCream : .secondary)
+                        .minimumScaleFactor(0.68)
+                    Text(Fmt.huf(slice.valueHUF))
+                        .font(.system(size: 8, weight: .bold).monospacedDigit())
+                        .foregroundStyle(palette.secondaryInk)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.65)
                 }
+            } else {
+                Text(displayName(slice))
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.68)
                 Spacer(minLength: 3)
                 Text(Fmt.huf(slice.valueHUF))
-                    .font((compact ? Font.caption2 : .caption).weight(.bold).monospacedDigit())
-                    .foregroundStyle(slice.isLiability ? DS.Color.negativeCream : .primary)
+                    .font(.system(size: 10, weight: .bold).monospacedDigit())
+                    .foregroundStyle(palette.ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.62)
             }
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(DS.Color.accent(slice.accentIndex).opacity(0.13))
-                    Capsule().fill(DS.Color.accent(slice.accentIndex))
-                        .frame(width: max(geo.size.width * slice.weight, 2))
-                }
-            }
-            .frame(height: compact ? 2.5 : 3)
         }
+        .frame(maxWidth: .infinity, minHeight: compact ? 24 : 30, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 
-    private func accountMeaning(_ slice: PortfolioSlice) -> String {
-        if slice.isLiability { return "tartozás · \(Fmt.percentPlain(slice.weight * 100))" }
-        if slice.isTransactional { return "folyószámla · \(Fmt.percentPlain(slice.weight * 100))" }
-        if let gain = slice.gainPercent {
-            return "\(Fmt.percent(gain)) · \(Fmt.percentPlain(slice.weight * 100))"
+    private func liabilityRow(_ slice: PortfolioSlice) -> some View {
+        HStack(spacing: 8) {
+            Text(displayName(slice))
+                .font(.system(size: 11, weight: .semibold))
+                .lineLimit(1)
+            Spacer(minLength: 8)
+            Text("\(Fmt.huf(abs(slice.valueHUF))) tartozás")
+                .font(.system(size: 11, weight: .bold).monospacedDigit())
+                .foregroundStyle(palette.negative)
+                .lineLimit(1)
+                .minimumScaleFactor(0.70)
         }
-        return Fmt.percentPlain(slice.weight * 100)
+        .padding(.horizontal, 12)
+        .frame(height: 42)
+        .background(palette.negative.opacity(colorScheme == .dark ? 0.18 : 0.09),
+                    in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 6) {
+            Image(systemName: "chart.pie")
+                .font(.system(size: 22, weight: .light))
+                .foregroundStyle(palette.accent(0))
+            Text("Nincs még portfólióadat")
+                .font(.caption.weight(.semibold))
+            Text("Nyisd meg az appot az első frissítéshez")
+                .font(.caption2)
+                .foregroundStyle(palette.secondaryInk)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func displayName(_ slice: PortfolioSlice) -> String {
+        if slice.kind == .brokerage,
+           let first = slice.name.components(separatedBy: "·").first {
+            return first.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if slice.kind == .current,
+           slice.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "revolut" {
+            return "Revolut folyószámla"
+        }
+        return slice.name
+    }
+
+    private func accountRank(_ kind: Platform.Kind) -> Int {
+        switch kind {
+        case .brokerage: return 0
+        case .savings:   return 1
+        case .current:   return 2
+        case .credit:    return 3
+        }
+    }
+}
+
+/// Szegmenses számlagyűrű. A nagyon kicsi számla is kap egy vékony, látható
+/// szeletet, de a középen lévő darabszám mindig a valódi számlaszám.
+private struct AllocationRing: View {
+    let slices: [PortfolioSlice]
+    let palette: WidgetPalette
+
+    var body: some View {
+        ZStack {
+            ForEach(Array(segments.enumerated()), id: \.offset) { index, segment in
+                Circle()
+                    .trim(from: segment.start + segment.gap,
+                          to: max(segment.start + segment.gap, segment.end - segment.gap))
+                    .stroke(palette.accent(slices[index].accentIndex),
+                            style: StrokeStyle(lineWidth: 22, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+            }
+
+            VStack(spacing: 0) {
+                Text("\(slices.count)")
+                    .font(.system(size: 25, weight: .bold, design: .rounded).monospacedDigit())
+                Text("számla")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(palette.secondaryInk)
+            }
+        }
+        .padding(12)
+    }
+
+    private struct Segment {
+        let start: CGFloat
+        let end: CGFloat
+        let gap: CGFloat
+    }
+
+    private var segments: [Segment] {
+        guard !slices.isEmpty else { return [] }
+        let adjusted = slices.map { max($0.weight, 0.012) }
+        let total = adjusted.reduce(0, +)
+        guard total > 0 else { return [] }
+
+        var cursor = 0.0
+        return adjusted.map { value in
+            let fraction = value / total
+            let start = cursor
+            let end = cursor + fraction
+            cursor = end
+            return Segment(start: CGFloat(start), end: CGFloat(end),
+                           gap: CGFloat(min(0.007, max(fraction * 0.16, 0.0012))))
+        }
     }
 }

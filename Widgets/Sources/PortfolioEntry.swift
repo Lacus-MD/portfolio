@@ -12,6 +12,8 @@ struct PortfolioSlice: Identifiable {
     /// az kód, nem név: a widgetről ránézésre nem lehetett megmondani, melyik
     /// számláról van szó. Ami nem fér ki, azt a nézet kicsinyíti.
     let name: String
+    /// A platform rövid jelölése a widget színezett számlaikonjához.
+    let monogram: String
     /// A platform akcentusának sorszáma. Enélkül a widgeten minden sáv
     /// ugyanaz a szín volt, és a sávok nem jelentettek semmit.
     let accentIndex: Int
@@ -28,6 +30,9 @@ struct PortfolioSlice: Identifiable {
 
 struct PortfolioEntry: TimelineEntry {
     var date: Date = Date()
+    /// Az appban kiválasztott téma. A widget külön folyamatban fut, ezért a
+    /// globális SwiftUI-s tématároló helyett az idővonal-bejegyzéssel visszük át.
+    var theme: AppTheme = .pastel
     var valueEUR: Decimal = 0
     var costEUR: Decimal = 0
     var fxRate: Decimal = 0
@@ -88,23 +93,30 @@ struct PortfolioEntry: TimelineEntry {
 
     static let placeholder: PortfolioEntry = {
         var e = PortfolioEntry()
-        e.valueEUR = 2_032; e.costEUR = 2_038; e.fxRate = 365.1
-        e.netHUF = 887_909; e.depositsHUF = 875_800
-        e.dayChangeHUF = 5_123
-        e.investableHUF = 860_900
-        e.grossAssetsHUF = 912_909
-        e.liabilitiesHUF = 25_000
+        e.netHUF = 1_388_290
+        e.dayChangeHUF = -87
+        e.investableHUF = 1_401_390
+        e.grossAssetsHUF = 2_039_157
+        e.liabilitiesHUF = 650_867
         e.slices = [
-            .init(id: "a", name: "TBSZ 2026", accentIndex: 0, kind: .brokerage,
-                  weight: 0.60, valueHUF: 550_500, gainPercent: 0.9),
-            .init(id: "b", name: "Revolut Savings", accentIndex: 1, kind: .savings,
-                  weight: 0.34, valueHUF: 310_400, gainPercent: 0.1),
-            .init(id: "c", name: "OTP Folyószámla", accentIndex: 2, kind: .current,
-                  weight: 0.06, valueHUF: 52_009, gainPercent: nil),
-            .init(id: "d", name: "OTP Hitelkártya", accentIndex: 3, kind: .credit,
-                  weight: 0.03, valueHUF: -25_000, gainPercent: nil),
+            .init(id: "tbsz-2026", name: "TBSZ 2026 · VWCE", monogram: "26",
+                  accentIndex: 0, kind: .brokerage,
+                  weight: 0.372, valueHUF: 1_000_657, gainPercent: 0.49),
+            .init(id: "revolut-savings", name: "Revolut Savings", monogram: "RS",
+                  accentIndex: 2, kind: .savings,
+                  weight: 0.149, valueHUF: 400_733, gainPercent: 0.07),
+            .init(id: "otp-current", name: "OTP Folyószámla", monogram: "O",
+                  accentIndex: 1, kind: .current,
+                  weight: 0.235, valueHUF: 631_729, gainPercent: nil),
+            .init(id: "revolut-current", name: "Revolut", monogram: "R",
+                  accentIndex: 3, kind: .current,
+                  weight: 0.002, valueHUF: 6_038, gainPercent: nil),
+            .init(id: "otp-credit", name: "OTP Hitelkártya", monogram: "O",
+                  accentIndex: 4, kind: .credit,
+                  weight: 0.242, valueHUF: -650_867, gainPercent: nil),
         ]
-        e.sparkline = [845_000, 852_000, 849_000, 861_000, 858_000, 872_000, 881_000, 887_909]
+        e.sparkline = [1_377_400, 1_382_100, 1_379_600, 1_386_900,
+                       1_384_200, 1_390_700, 1_388_377, 1_388_290]
         return e
     }()
 
@@ -114,10 +126,12 @@ struct PortfolioEntry: TimelineEntry {
     /// hogy a widget ne tegyen úgy, mintha friss adatot mutatna.
     static func make() async -> PortfolioEntry {
         let payload = PortfolioFile.load()
+        let theme = AppTheme.named(payload.themeID)
         let hasFinancialData = !payload.holdings.isEmpty
             || !payload.cashAssets.isEmpty || !payload.cash.isEmpty
         guard hasFinancialData else {
             var empty = PortfolioEntry()
+            empty.theme = theme
             empty.hasHoldings = false
             return empty
         }
@@ -140,6 +154,7 @@ struct PortfolioEntry: TimelineEntry {
         // hiányos — tehát hamisan alacsony — összeget.
         guard payload.holdings.allSatisfy({ prices[$0.isin] != nil }), fx > 0 else {
             var stale = PortfolioEntry()
+            stale.theme = theme
             stale.hasHoldings = true
             stale.isLive = false
             stale.asOf = payload.lastRefresh
@@ -173,6 +188,7 @@ struct PortfolioEntry: TimelineEntry {
         let liabilitiesHUF = -perPlatform.values.filter { $0 < 0 }.reduce(Decimal(0), +)
 
         var entry = PortfolioEntry()
+        entry.theme = theme
         entry.netHUF = netHUF
         // A belső átvezetések NEM új pénz — ugyanaz a szabály, mint az appban.
         // Nyersen összeadva a befizetést a hozam hamisan romlana.
@@ -192,6 +208,7 @@ struct PortfolioEntry: TimelineEntry {
             return PortfolioSlice(
                 id: platform.id,
                 name: platform.name,
+                monogram: platform.monogram,
                 accentIndex: platform.accent.index,
                 kind: platform.kind,
                 weight: totalMagnitude > 0 ? (abs(value) / totalMagnitude).doubleValue : 0,

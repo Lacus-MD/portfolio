@@ -43,7 +43,6 @@ struct PortfolioBreakdownWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "PortfolioBreakdown", provider: PortfolioProvider()) { entry in
             BreakdownWidgetView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
         }
         .configurationDisplayName("Pénzügyi pillanatkép")
         .description("Pontos nettó vagyon, napi változás, számlaegyenlegek és tartozások.")
