@@ -258,27 +258,26 @@ struct IndexedChart: View {
                             style: .init(lineWidth: index == 0 ? 3 : 2.6,
                                          lineCap: .round)
                         )
+                    }
+                }
 
-                        guard let last = CurveBuilder.points(
-                            smoothed, xs: item.xs, in: size,
-                            low: low, high: high, scale: scale
-                        ).last else { continue }
-                        let dotSize: CGFloat = 9
-                        let haloSize = dotSize * 1.85
-                        context.fill(
-                            Path(ellipseIn: CGRect(x: last.x - haloSize / 2,
-                                                  y: last.y - haloSize / 2,
-                                                  width: haloSize, height: haloSize)),
-                            with: .color(item.color.opacity(0.18))
-                        )
-                        let dotRect = CGRect(x: last.x - dotSize / 2,
-                                             y: last.y - dotSize / 2,
-                                             width: dotSize, height: dotSize)
-                        context.fill(Path(ellipseIn: dotRect),
-                                     with: .color(DS.Color.onShell()))
-                        context.stroke(Path(ellipseIn: dotRect),
-                                       with: .color(item.color),
-                                       lineWidth: dotSize * 0.25)
+                // A Canvas a saját téglalapjánál levágja a rajzot. A jobb
+                // szélső pont közepe x == width, ezért a kör és a glória fele
+                // kívülre került. A pontok külön SwiftUI-overlayként túlnyúlhatnak
+                // a rajzfelületen, miközben a nehéz görbék maradnak az
+                // aszinkron Canvasban.
+                ForEach(series) { item in
+                    let smoothed = CurveBuilder.smoothed(
+                        item.values,
+                        window: CurveBuilder.suggestedWindow(item.values.count)
+                    )
+                    if let last = CurveBuilder.points(
+                        smoothed, xs: item.xs, in: geo.size,
+                        low: low, high: high, scale: scale
+                    ).last {
+                        PulsingDot(color: item.color, size: 9)
+                            .position(last)
+                            .allowsHitTesting(false)
                     }
                 }
 
