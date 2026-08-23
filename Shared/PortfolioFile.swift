@@ -18,7 +18,7 @@ enum PortfolioFile {
         case corrupt        // egyik sem olvasható
     }
 
-    struct Payload: Codable {
+    struct Payload: Codable, @unchecked Sendable {
         var holdings: [Holding] = []
         var snapshots: [Snapshot] = []
         /// Forintos befizetések — az XIRR alapja.

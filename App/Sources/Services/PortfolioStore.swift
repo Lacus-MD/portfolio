@@ -3,6 +3,24 @@ import UIKit
 import Observation
 import WidgetKit
 
+/// A JSON-kódolás, az atomi fájlírás és az opcionális titkosítás nem futhat
+/// a SwiftUI főszálán. A generáció megakadályozza, hogy két gyors mentés
+/// fordított sorrendben írjon régebbi állapotot az újabb fölé.
+private actor PortfolioPersistenceWriter {
+    static let shared = PortfolioPersistenceWriter()
+    private var latestGeneration = 0
+
+    func save(_ payload: PortfolioFile.Payload,
+              generation: Int,
+              encrypted: Bool) -> Bool {
+        guard generation >= latestGeneration else { return false }
+        latestGeneration = generation
+        PortfolioFile.save(payload)
+        if encrypted { try? BackupSecurityManager.save(payload) }
+        return true
+    }
+}
+
 @MainActor
 @Observable
 final class PortfolioStore {
@@ -646,10 +664,16 @@ final class PortfolioStore {
         var report: [String] = []
         // Előbb behozzuk, amit az iCloud-mappába tettél (akár Macről),
         // aztán átnézzük a kijelölt mappáidat (pl. az iCloud Drive gyökerét).
-        Inbox.collectFromCloud()
-        WatchedFolders.collect()
+        // Ezek hálózati fájlrendszert és security-scoped könyvtárakat járnak
+        // be. Korábban a @MainActor Store-ból szinkron futottak, ezért egy
+        // iCloud metadata-jelzés bármelyik fül görgetését megakaszthatta.
+        let pending = await Task.detached(priority: .utility) {
+            Inbox.collectFromCloud()
+            WatchedFolders.collect()
+            return Inbox.pending()
+        }.value
         let year = Calendar.current.component(.year, from: Date())
-        for url in Inbox.pending() {
+        for url in pending {
             do {
                 let (warnings, account) = try await importStatement(from: url, tbszYear: year)
                 report.append("\(url.lastPathComponent) → \(account)")
@@ -1208,13 +1232,17 @@ final class PortfolioStore {
         payload.lastRefresh = lastRefresh
         payload.fxRate = fxRate
         payload.lastPrices = quotes.mapValues(\.price)
-        PortfolioFile.save(payload)
-        if BackupSecurityManager.isEnabled {
-            try? BackupSecurityManager.save(payload)
+        let generation = mutationCount
+        let encrypted = BackupSecurityManager.isEnabled
+        Task {
+            let written = await PortfolioPersistenceWriter.shared.save(
+                payload, generation: generation, encrypted: encrypted
+            )
+            // A widget külön folyamat. Csak tényleges fájlírás után ébresztjük,
+            // így nem olvashatja félúton a korábbi állapotot.
+            if written { WidgetCenter.shared.reloadAllTimelines() }
         }
-        // A widget külön folyamat — magától nem tudja, hogy változott az adat.
-        WidgetCenter.shared.reloadAllTimelines()
-        // Az óra pedig külön ESZKÖZ: neki külön kell átküldeni.
-        WatchBridge.shared.send(watchSummary)
+        // A summary csak aktív óra-kapcsolatnál épül fel.
+        WatchBridge.shared.send { watchSummary }
     }
 }

@@ -20,8 +20,12 @@ final class WatchBridge: NSObject, WCSessionDelegate {
         session.activate()
     }
 
-    func send(_ summary: WatchSummary) {
+    /// A summary felépítése is több portfólió-összesítést végez. Csak akkor
+    /// kérjük el a hívótól, ha van aktív óra-kapcsolat; telefon-only használatnál
+    /// így a mentés nem számol teljesen fölöslegesen a főszálon.
+    func send(_ makeSummary: () -> WatchSummary) {
         guard let session, session.activationState == .activated else { return }
+        let summary = makeSummary()
         guard let data = try? JSONEncoder().encode(summary) else { return }
         // A szótár értékeinek property-list-kompatibilisnek kell lenniük,
         // ezért egyetlen Data mezőt küldünk, nem szétbontott számokat.

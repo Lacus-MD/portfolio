@@ -12,11 +12,18 @@ settings:
     # Az `NSUbiquitousContainers` beállítást (a Fájlok appban látható
     # „Portfólió" mappa) az iOS GYORSÍTÓTÁRAZZA, és csak akkor olvassa újra,
     # ha a build-szám nőtt. Ezért nem jelent meg a mappa.
-    CURRENT_PROJECT_VERSION: "7"
+    CURRENT_PROJECT_VERSION: "9"
     SWIFT_VERSION: "5.0"
     DEVELOPMENT_TEAM: YGU3DVQ6S8
     CODE_SIGN_STYLE: Automatic
     GENERATE_INFOPLIST_FILE: YES
+    # A telefonra telepített build végfelhasználói futás, nem coverage-run.
+    # Az Xcode 27 automatikus sémája ezt YES-re állította még Release-ben is,
+    # ezért `-profile-generate` műszerezés maradt az app minden függvényében.
+    ENABLE_CODE_COVERAGE: NO
+    CLANG_COVERAGE_MAPPING: NO
+    GCC_GENERATE_TEST_COVERAGE_FILES: NO
+    GCC_INSTRUMENT_PROGRAM_FLOW_ARCS: NO
 
 targets:
   Portfolio:

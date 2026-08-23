@@ -18,7 +18,15 @@ final class CloudWatcher {
     init(onChange: @escaping () -> Void) {
         self.onChange = onChange
         query.searchScopes = [NSMetadataQueryUbiquitousDocumentsScope]
-        query.predicate = NSPredicate(format: "%K LIKE '*'", NSMetadataItemFSNameKey)
+        // Csak olyan fájl változása érdekel, amit tényleg be tudunk olvasni.
+        // A korábbi `LIKE '*'` minden iCloud-metaadat változásnál felébresztette
+        // az appot (README, archív mappa, szinkronállapot), és a főszálon újra
+        // elindította a teljes postaláda-vizsgálatot görgetés közben is.
+        query.predicate = NSCompoundPredicate(orPredicateWithSubpredicates: [
+            "csv", "pdf", "txt", "xml"
+        ].map { ext in
+            NSPredicate(format: "%K ENDSWITH[c] %@", NSMetadataItemFSNameKey, ".\(ext)")
+        })
 
         for name in [NSNotification.Name.NSMetadataQueryDidFinishGathering,
                      .NSMetadataQueryDidUpdate] {
