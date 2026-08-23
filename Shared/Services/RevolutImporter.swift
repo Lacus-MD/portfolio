@@ -34,7 +34,8 @@ struct RevolutImporter {
     enum Kind { case savings, account }
 
     static func detect(csv text: String) -> Kind? {
-        guard let header = text.split(whereSeparator: \.isNewline).first else { return nil }
+        guard let header = text.split(whereSeparator: \.isNewline).first
+                .map(String.init)?.withoutUTF8BOM else { return nil }
         if header.contains("Bejövő összeg"), header.contains("Egyenleg") { return .savings }
         if header.contains("Típus"), header.contains("Termék"), header.contains("State") {
             return .account
@@ -162,7 +163,9 @@ struct RevolutImporter {
         var balance: Decimal = 0
         var skippedPending = 0
 
-        let lines = text.split(whereSeparator: \.isNewline).map(String.init)
+        let lines = text.split(whereSeparator: \.isNewline)
+            .map(String.init)
+            .map(\.withoutUTF8BOM)
         guard let header = lines.first else {
             return Result(platform: Platform(id: platformID, name: "Revolut Folyószámla",
                                              kind: .current, accent: .mint, monogram: "RF"),

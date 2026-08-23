@@ -64,7 +64,7 @@ enum OTPImporter {
     // MARK: - Felismerés
 
     static func detect(text: String) -> Kind? {
-        guard text.contains("OTP BANK NYRT") else { return nil }
+        guard text.withoutUTF8BOM.contains("OTP BANK NYRT") else { return nil }
         if text.contains("Hitelkártya számlakivonat") { return .credit }
         if text.contains("SZÁMLAKIVONAT"), text.contains("FORGALMAK") { return .account }
         return nil
@@ -86,12 +86,7 @@ enum OTPImporter {
 
     /// „-1.505.050" → −1505050. Forintos egész, ezres pontokkal.
     static func amount(_ text: String) -> Decimal? {
-        let cleaned = text
-            .replacingOccurrences(of: "\u{00A0}", with: "")
-            .replacingOccurrences(of: " ", with: "")
-            .replacingOccurrences(of: ".", with: "")
-        guard !cleaned.isEmpty, cleaned.rangeOfCharacter(from: .decimalDigits) != nil else { return nil }
-        return Decimal(string: cleaned, locale: Locale(identifier: "en_US_POSIX"))
+        HungarianCSV.number(text)
     }
 
     private static func firstMatch(_ pattern: String, in text: String) -> String? {

@@ -74,7 +74,9 @@ struct StatementImporter {
     }
 
     func `import`(csv text: String, account: String, tbszYear: Int) async throws -> Result {
-        let lines = text.split(whereSeparator: \.isNewline).map(String.init)
+        let lines = text.split(whereSeparator: \.isNewline)
+            .map(String.init)
+            .map(\.withoutUTF8BOM)
         guard let header = lines.first else { throw ImportError.unreadable }
         let cols = Self.parse(line: header)
         guard cols.contains("Type"), cols.contains("Gross Amount") else { throw ImportError.noHeader }
@@ -278,16 +280,30 @@ struct StatementImporter {
 
     /// Idézőjeleket kezelő CSV-sorbontó. A Lightyear minden mezőt idézőjelez,
     /// de a vesszőt tartalmazó alapnevek miatt nem elég a sima `split`.
-    static func parse(line: String) -> [String] {
+    static func parse(line: String, delimiter: Character = ",") -> [String] {
         var fields: [String] = []
         var current = ""
         var inQuotes = false
-        for char in line {
-            switch char {
-            case "\"": inQuotes.toggle()
-            case "," where !inQuotes: fields.append(current); current = ""
-            default: current.append(char)
+        let characters = Array(line.withoutUTF8BOM)
+        var index = 0
+        while index < characters.count {
+            let char = characters[index]
+            if char == "\"" {
+                // CSV escapes a quote inside a quoted field as two quotes.
+                if inQuotes, index + 1 < characters.count,
+                   characters[index + 1] == "\"" {
+                    current.append("\"")
+                    index += 2
+                    continue
+                }
+                inQuotes.toggle()
+            } else if char == delimiter, !inQuotes {
+                fields.append(current)
+                current = ""
+            } else {
+                current.append(char)
             }
+            index += 1
         }
         fields.append(current)
         return fields
@@ -315,6 +331,6 @@ struct StatementImporter {
     static func number(_ text: String) -> Decimal {
         let t = text.trimmingCharacters(in: .whitespaces)
         guard !t.isEmpty else { return 0 }
-        return Decimal(string: t, locale: Locale(identifier: "en_US_POSIX")) ?? 0
+        return HungarianCSV.number(t) ?? 0
     }
 }

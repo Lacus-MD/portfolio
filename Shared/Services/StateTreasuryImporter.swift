@@ -52,7 +52,7 @@ enum StateTreasuryImporter {
 
     static func `import`(text: String, accountHint: String) throws -> Result {
         let normalizedLines = text.split(whereSeparator: \.isNewline).map {
-            $0.trimmingCharacters(in: .whitespacesAndNewlines)
+            String($0).withoutUTF8BOM.trimmingCharacters(in: .whitespacesAndNewlines)
         }.filter { !$0.isEmpty }
         guard normalizedLines.count >= 2 else { throw ImportError.unreadable }
 
@@ -117,11 +117,10 @@ enum StateTreasuryImporter {
     // MARK: - Sor- és fejlécfeldolgozás
 
     private static func parse(line: String, by delimiter: Character) -> [String] {
-        if delimiter == "," {
-            // A meglévő importoknál használt, idézőjelet ismerő parser.
-            return StatementImporter.parse(line: line).map { $0.trimmingCharacters(in: .whitespaces) }
-        }
-        return line.split(separator: delimiter).map { String($0).trimmingCharacters(in: .whitespaces) }
+        // The shared parser handles quoted delimiters for comma, semicolon,
+        // tab and pipe exports alike.
+        return StatementImporter.parse(line: line, delimiter: delimiter)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
     }
 
     private static func preferredDelimiter(in lines: [String]) -> Character {
