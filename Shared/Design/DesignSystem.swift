@@ -239,7 +239,7 @@ extension Color {
 /// a fő szálról.
 @Observable
 final class ActiveTheme: @unchecked Sendable {
-    nonisolated(unsafe) static let shared = ActiveTheme()
+    static let shared = ActiveTheme()
     var value: AppTheme = .pastel
     private init() {}
 }

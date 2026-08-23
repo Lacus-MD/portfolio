@@ -56,8 +56,12 @@ struct PortfolioApp: App {
                         let scoped = url.startAccessingSecurityScopedResource()
                         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
                         if let data = try? Data(contentsOf: url) {
-                            try? Inbox.store(data, named: url.lastPathComponent)
-                            try? FileManager.default.removeItem(at: url)
+                            do {
+                                _ = try Inbox.store(data, named: url.lastPathComponent)
+                                try FileManager.default.removeItem(at: url)
+                            } catch {
+                                print("Inbox import failed: \(error.localizedDescription)")
+                            }
                         }
                         await store.startup()
                     }

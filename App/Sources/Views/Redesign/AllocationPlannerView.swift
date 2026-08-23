@@ -196,7 +196,7 @@ struct AllocationPlannerView: View {
         .navigationBarTitleDisplayMode(.inline)
         .tint(DS.Color.coral)
         .onAppear(perform: resetFromStore)
-        .onChange(of: targets) { _ in
+        .onChange(of: targets) { _, _ in
             guard loadedTargets else { return }
             persistTargets()
         }

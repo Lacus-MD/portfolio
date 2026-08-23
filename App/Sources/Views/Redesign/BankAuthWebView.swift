@@ -61,7 +61,7 @@ struct BankAuthWebView: UIViewRepresentable {
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!,
                      withError error: Error) {
             let failing = (error as NSError)
-                .userInfo[NSURLErrorFailingURLStringErrorKey] as? String
+                .userInfo[NSURLErrorFailingURLErrorKey] as? String
             if let failing, failing.hasPrefix(parent.redirectPrefix),
                let url = URL(string: failing), !finished {
                 finished = true

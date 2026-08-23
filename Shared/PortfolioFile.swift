@@ -114,12 +114,12 @@ enum PortfolioFile {
             tbszRules = try? c.decodeIfPresent(TBSZRules.self, forKey: .tbszRules)
             scenario = try? c.decodeIfPresent(Scenario.self, forKey: .scenario)
             constituentPrices = (try? c.decodeIfPresent([String: [String: Decimal]].self,
-                                                        forKey: .constituentPrices)) as? [String: [String: Decimal]] ?? [:]
+                                                        forKey: .constituentPrices)) ?? [:]
             quantityTimeline = (try? c.decodeIfPresent([String: [String: Decimal]].self,
-                                                       forKey: .quantityTimeline)) as? [String: [String: Decimal]] ?? [:]
-            hiddenNews = (try? c.decodeIfPresent([String].self, forKey: .hiddenNews)) as? [String] ?? []
-            expenses = (try? c.decodeIfPresent([ExpenseEntry].self, forKey: .expenses)) as? [ExpenseEntry] ?? []
-            creditCards = (try? c.decodeIfPresent([CreditCardStatus].self, forKey: .creditCards)) as? [CreditCardStatus] ?? []
+                                                       forKey: .quantityTimeline)) ?? [:]
+            hiddenNews = (try? c.decodeIfPresent([String].self, forKey: .hiddenNews)) ?? []
+            expenses = (try? c.decodeIfPresent([ExpenseEntry].self, forKey: .expenses)) ?? []
+            creditCards = (try? c.decodeIfPresent([CreditCardStatus].self, forKey: .creditCards)) ?? []
             trades = try c.decodeIfPresent([TradeMarker].self, forKey: .trades) ?? []
             themeID = try c.decodeIfPresent(String.self, forKey: .themeID) ?? "pastel"
             if let byAccount = try? c.decode([String: Decimal].self, forKey: .conversionSpread) {
