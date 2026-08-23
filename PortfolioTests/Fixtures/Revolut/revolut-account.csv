@@ -1,0 +1,4 @@
+﻿Típus,Termék,Kezdés dátuma,Teljesítés dátuma,Leírás,Összeg,Díj,Pénznem,State,Egyenleg
+CARD,Folyószámla,2026-08-01 10:00:00,2026-08-01 10:00:00,Befizetés,1000.00,0.00,HUF,ELVÉGEZVE,1000.00
+CARD,Folyószámla,2026-08-02 10:00:00,2026-08-02 10:00:00,"Megtakarítási Számla, átvezetés",-100.00,0.00,HUF,ELVÉGEZVE,900.00
+CARD,Folyószámla,2026-08-03 10:00:00,2026-08-03 10:00:00,Függő tétel,25.00,0.00,HUF,FÜGGŐBEN,925.00
