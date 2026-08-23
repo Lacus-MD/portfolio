@@ -5,11 +5,15 @@ struct CardPanelPalette {
     let cornerColors: [Color]
     let shadow: Color
 
-    static let softPastel = Self(
-        baseColors: [Color(hex: 0xF6F9FF), Color(hex: 0xEDF3FF)],
-        cornerColors: [Color(hex: 0x798CFF), Color(hex: 0x5D7BFF)],
-        shadow: Color(hex: 0x566AE8).opacity(0.16)
-    )
+    /// Visszafelé kompatibilis név, de már nem fix pasztell: minden panel az
+    /// aktív téma vásznából, kártyájából és első két akcentusából épül fel.
+    static var softPastel: Self {
+        Self(
+            baseColors: [DS.Color.card, DS.Color.canvas],
+            cornerColors: [DS.Color.accent(0), DS.Color.accent(1)],
+            shadow: DS.Color.accent(0).opacity(0.14)
+        )
+    }
 }
 
 struct PastelPanelBackground<S: Shape>: View {

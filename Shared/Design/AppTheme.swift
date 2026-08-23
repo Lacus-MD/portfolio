@@ -198,7 +198,8 @@ struct AppTheme: Identifiable, Codable, Hashable {
         canvasLight: 0xF3F3F1, cardLight: 0xFFFFFF, inkLight: 0x161616,
         canvasDark: 0x090909, cardDark: 0x191919, inkDark: 0xF5F5F2,
         shellLight: 0xE7E7E4,
-        accents: [0xFFA500, 0xB22222, 0x111184, 0xCCFF00, 0xFFED29, 0x7C7C78]
+        accents: [0xFFA500, 0xB22222, 0x111184, 0xCCFF00, 0xFFED29, 0x7C7C78],
+        negative: 0xB22222
     )
 
     private static func make(
@@ -211,7 +212,9 @@ struct AppTheme: Identifiable, Codable, Hashable {
         cardDark: UInt32,
         inkDark: UInt32,
         shellLight: UInt32,
-        accents: [UInt32]
+        accents: [UInt32],
+        positive: UInt32 = 0x4F9B68,
+        negative: UInt32 = 0xC95555
     ) -> AppTheme {
         AppTheme(
             id: id, name: name,
@@ -222,7 +225,7 @@ struct AppTheme: Identifiable, Codable, Hashable {
             inkOnShellLight: inkLight, hasLightShell: true,
             accents: accents,
             inkOnAccents: accents.map { bestInk(on: $0, darkInk: inkLight) },
-            positive: 0x4F9B68, negative: 0xC95555,
+            positive: positive, negative: negative,
             iconHues: accents
         )
     }

@@ -40,72 +40,53 @@ struct PlatformCardPalette {
     let shadow: Color
 
     static func resolve(for platform: Platform, featured: Bool) -> Self {
+        // A kártyák szerepe állandó, a tényleges árnyalat viszont MINDIG az
+        // aktív témából érkezik. Így az öt tipikus számla külön színt kap,
+        // miközben témaváltáskor együtt mozdul a teljes felülettel.
+        let accentIndex: Int?
+        let accent: Color
+        switch platform.kind {
+        case .credit:
+            accentIndex = nil
+            accent = DS.Color.negativeCream
+        case .savings:
+            accentIndex = 3
+            accent = DS.Color.accent(3)
+        case .current:
+            if platform.name.localizedCaseInsensitiveContains("revolut") {
+                accentIndex = 4
+                accent = DS.Color.accent(4)
+            } else {
+                accentIndex = 2
+                accent = DS.Color.accent(2)
+            }
+        case .brokerage:
+            accentIndex = platform.accent.index
+            accent = platform.accent.color
+        }
+
+        let adjacent = DS.Color.accent(((accentIndex ?? 0) + 1) % max(DS.Color.theme.accents.count, 1))
+
         if featured {
             return .init(
-                baseColors: [Color(hex: 0x182440), Color(hex: 0x0D1830)],
-                cornerColors: [Color(hex: 0x536CFF), Color(hex: 0x6F58E8)],
-                ink: .white,
-                accent: Color(hex: 0xA9B8FF),
-                ringTrack: .white.opacity(0.27),
-                badgeFill: .white.opacity(0.09),
-                shadow: .black.opacity(0.18)
+                baseColors: [DS.Color.plum, DS.Color.plumDeep],
+                cornerColors: [accent, adjacent],
+                ink: DS.Color.onShell(),
+                accent: accent,
+                ringTrack: DS.Color.onShell(0.22),
+                badgeFill: DS.Color.onShell(0.08),
+                shadow: accent.opacity(0.16)
             )
         }
 
-        switch platform.kind {
-        case .credit:
-            return .peach
-        case .savings:
-            return .mint
-        case .current:
-            // A két tranzakciós számla egymás mellett is azonnal
-            // megkülönböztethető. Más szolgáltatók a banki kék receptet kapják.
-            return platform.name.localizedCaseInsensitiveContains("revolut")
-                ? .lilac : .periwinkle
-        case .brokerage:
-            return platform.accent.index.isMultiple(of: 2) ? .periwinkle : .lilac
-        }
+        return .init(
+            baseColors: [DS.Color.card, DS.Color.canvas],
+            cornerColors: [accent, adjacent],
+            ink: DS.Color.ink,
+            accent: accent,
+            ringTrack: DS.Color.inkSoft(0.11),
+            badgeFill: accent.opacity(0.10),
+            shadow: accent.opacity(0.13)
+        )
     }
-
-    private static let commonInk = Color(hex: 0x142754)
-
-    private static let periwinkle = Self(
-        baseColors: [Color(hex: 0xF3F5FF), Color(hex: 0xE7ECFF)],
-        cornerColors: [Color(hex: 0x806CFF), Color(hex: 0x6489F5)],
-        ink: commonInk,
-        accent: Color(hex: 0x4D6FE8),
-        ringTrack: commonInk.opacity(0.12),
-        badgeFill: Color(hex: 0x536FE4).opacity(0.10),
-        shadow: Color(hex: 0x536FE4).opacity(0.15)
-    )
-
-    private static let mint = Self(
-        baseColors: [Color(hex: 0xF1F9F2), Color(hex: 0xE2F4E9)],
-        cornerColors: [Color(hex: 0x62B64C), Color(hex: 0x2D9B7B)],
-        ink: commonInk,
-        accent: Color(hex: 0x3C9A50),
-        ringTrack: commonInk.opacity(0.11),
-        badgeFill: Color(hex: 0x3C9A50).opacity(0.10),
-        shadow: Color(hex: 0x3C9A50).opacity(0.13)
-    )
-
-    private static let lilac = Self(
-        baseColors: [Color(hex: 0xF8EEF8), Color(hex: 0xECE8FF)],
-        cornerColors: [Color(hex: 0x775FE8), Color(hex: 0x5542AC)],
-        ink: commonInk,
-        accent: Color(hex: 0x8D4FA8),
-        ringTrack: commonInk.opacity(0.11),
-        badgeFill: Color(hex: 0x8D4FA8).opacity(0.10),
-        shadow: Color(hex: 0x775FE8).opacity(0.13)
-    )
-
-    private static let peach = Self(
-        baseColors: [Color(hex: 0xFFF1E9), Color(hex: 0xFFE0D5)],
-        cornerColors: [Color(hex: 0xFF9A76), Color(hex: 0xEF4E3D)],
-        ink: commonInk,
-        accent: Color(hex: 0xE94B35),
-        ringTrack: commonInk.opacity(0.10),
-        badgeFill: Color(hex: 0xE94B35).opacity(0.10),
-        shadow: Color(hex: 0xE94B35).opacity(0.13)
-    )
 }
