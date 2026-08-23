@@ -23,7 +23,10 @@ final class PortfolioStore {
     ///
     /// A felhasználó célállítása; minden kulcs egy platform-id, az érték
     /// százalék. A célértékek mentése ugyanúgy a tárolás része.
-    private(set) var allocationTargets: [String: Double] = [:]
+    // Az allocation planner külön extensionben kezeli és menti a célokat,
+    // ezért a setternek a típuson belüli kiterjesztésekből is elérhetőnek kell
+    // lennie.
+    var allocationTargets: [String: Double] = [:]
     /// Melyik platform jön a bankkapcsolatból, és melyik banktól.
     var bankLinkedPlatforms: [String: String] = [:]
 

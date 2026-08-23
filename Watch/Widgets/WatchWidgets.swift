@@ -51,10 +51,12 @@ struct WatchWidgetView: View {
         switch family {
         case .accessoryInline:
             Text("\(Fmt.compact(entry.summary.totalHUF, currency: "HUF")) · \(Fmt.percent(entry.summary.gainPct, digits: 1))")
+#if os(watchOS)
         case .accessoryCorner:
             Text(Fmt.compact(entry.summary.totalHUF, currency: "HUF"))
                 .widgetCurvesContent()
                 .widgetLabel { Text(Fmt.percent(entry.summary.gainPct, digits: 1)) }
+#endif
         case .accessoryCircular:
             Gauge(value: min(max(entry.summary.gainPct, -25), 25), in: -25...25) {
                 Image(systemName: "chart.line.uptrend.xyaxis")
@@ -103,14 +105,21 @@ struct WatchWidgetView: View {
 
 struct PortfolioWatchWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "PortfolioWatch", provider: WatchProvider()) { entry in
+#if os(watchOS)
+        let families: [WidgetFamily] = [.accessoryRectangular, .accessoryCircular,
+                                         .accessoryInline, .accessoryCorner]
+#else
+        let families: [WidgetFamily] = [.accessoryRectangular, .accessoryCircular,
+                                         .accessoryInline]
+#endif
+
+        return StaticConfiguration(kind: "PortfolioWatch", provider: WatchProvider()) { entry in
             WatchWidgetView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
         .configurationDisplayName("Portfólió")
         .description("A teljes vagyonod és a hozam egy pillantásra.")
-        .supportedFamilies([.accessoryRectangular, .accessoryCircular,
-                            .accessoryInline, .accessoryCorner])
+        .supportedFamilies(families)
     }
 }
 

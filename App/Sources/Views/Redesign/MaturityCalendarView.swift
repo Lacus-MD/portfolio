@@ -141,7 +141,7 @@ struct MaturityCalendarView: View {
         case .collectionDeadline: return DS.Color.iconTime
         case .threeYear: return DS.Color.positiveGreen
         case .fiveYear: return DS.Color.coral
-        case .savingsRate: return DS.Color.iconCash
+        case .savingsRate: return DS.Color.iconFX
         }
     }
 }

@@ -451,7 +451,7 @@ extension PortfolioStore {
 
         if let oldest = oldestEstimateDays, oldest > 0, estimatedInterestHUF > 0 {
             let date = Calendar.current.date(byAdding: .day, value: -oldest, to: Date())
-            let state = oldest >= 7 ? .outOfDate : (oldest >= 3 ? .stale : .good)
+            let state: FreshnessState = oldest >= 7 ? .outOfDate : (oldest >= 3 ? .stale : .good)
             rows.append(DataFreshnessItem(
                 category: "Kamatbecslés",
                 title: "Megtakarítás becslése öregedett",
@@ -469,15 +469,14 @@ extension PortfolioStore {
             ))
         }
 
-        if hasMissingQuotes {
-            let missing = platformSummaries.filter(\.isMissingValue).count
-            let worst = missing > 0 ? .stale : .fresh
+        let missing = platformSummaries.filter(\.isMissingValue).count
+        if missing > 0 {
             rows.append(DataFreshnessItem(
                 category: "Árak",
                 title: "Hiányzó platformérték",
                 detail: "\(missing) platformnál nincs teljesen friss árfolyam",
                 lastUpdated: lastRefresh,
-                state: worst
+                state: .stale
             ))
         }
 
@@ -485,7 +484,7 @@ extension PortfolioStore {
             rows.append(DataFreshnessItem(
                 category: "Adatműveletek",
                 title: "Belső átvezetés hiányzik",
-                detail: "\(Fmt.huf(unmatched.netHUF)) (érintett: \(unmatched.accounts.joined(separator: \", \")))",
+                detail: "\(Fmt.huf(unmatched.netHUF)) (érintett: \(unmatched.accounts.joined(separator: ", ")))",
                 lastUpdated: Date(),
                 state: .good
             ))

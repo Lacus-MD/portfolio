@@ -61,4 +61,11 @@ final class WatchModel: NSObject, WCSessionDelegate {
             WidgetCenter.shared.reloadAllTimelines()
         }
     }
+
+    // Ezeket a callbackeket a watchOS nem használja, de az iOS SDK-s
+    // szimulátoros ellenőrzés során a WCSessionDelegate kötelezővé teszi őket.
+#if os(iOS)
+    nonisolated func sessionDidBecomeInactive(_ session: WCSession) {}
+    nonisolated func sessionDidDeactivate(_ session: WCSession) {}
+#endif
 }

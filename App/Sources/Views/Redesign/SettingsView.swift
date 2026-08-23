@@ -32,257 +32,30 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Bankkapcsolat") {
-                    NavigationLink {
-                        BankConnectionView()
-                    } label: {
-                        Label("Enable Banking", systemImage: "building.columns")
-                    }
-                }
+                bankSection
+                legalSection
 
-                Section {
-                    Toggle("Hitelkártya fizetési határidő", isOn: Binding(
-                        get: { cardReminder },
-                        set: { on in
-                            cardReminder = on
-                            Task {
-                                if on, await Reminders.requestPermission() == false {
-                                    cardReminder = false; PaymentReminder.isEnabled = false
-                                    notificationsDenied = true; return
-                                }
-                                PaymentReminder.isEnabled = on
-                                await PaymentReminder.schedule(for: store.creditCards.first)
-                            }
-                        }
-                    ))
-                    Toggle("Havi kivonat-emlékeztető", isOn: Binding(
-                        get: { statementReminder },
-                        set: { on in
-                            statementReminder = on
-                            Task {
-                                if on, await Reminders.requestPermission() == false {
-                                    statementReminder = false; Reminders.Statements.isEnabled = false
-                                    notificationsDenied = true; return
-                                }
-                                Reminders.Statements.isEnabled = on
-                                await Reminders.Statements.schedule()
-                            }
-                        }
-                    ))
-                    Toggle("Banki engedély lejárata", isOn: Binding(
-                        get: { consentReminder },
-                        set: { on in
-                            consentReminder = on
-                            Task {
-                                if on, await Reminders.requestPermission() == false {
-                                    consentReminder = false; Reminders.Consent.isEnabled = false
-                                    notificationsDenied = true; return
-                                }
-                                Reminders.Consent.isEnabled = on
-                                await Reminders.Consent.schedule(for: banking.connections)
-                            }
-                        }
-                    ))
-                } header: {
-                    Text("Értesítések")
-                } footer: {
-                    Text("Helyi értesítések: az időzítést az iOS tárolja, az app nem küld semmit sehova. A kártya-határidőről három nappal előbb, a kivonatokról minden hónap \(Reminders.Statements.dayOfMonth)-én, a banki engedély lejáratáról \(Reminders.Consent.leadDays) nappal előbb szólok — mindegyik reggel 9-kor.")
-                }
+                notificationSection
 
-                Section("Adatok") {
-                    Button {
-                        isImporting = true
-                    } label: {
-                        Label("Kivonat beolvasása", systemImage: "square.and.arrow.down")
-                    }
-                    Button {
-                        Task { await store.backfill() }
-                    } label: {
-                        Label("Görbe visszatöltése", systemImage: "clock.arrow.circlepath")
-                    }
-                    .disabled(store.holdings.isEmpty)
-                }
+                dataSection
 
-                Section("Fejlesztői eszközök") {
-                    NavigationLink {
-                        AllocationPlannerView()
-                    } label: {
-                        Label("Célallokáció és új pénz elosztása", systemImage: "target")
-                    }
-                    NavigationLink {
-                        MaturityCalendarView()
-                    } label: {
-                        Label("Kamat- és lejárati naptár", systemImage: "calendar.badge.clock")
-                    }
-                    NavigationLink {
-                        DataFreshnessCenterView()
-                    } label: {
-                        Label("Adatfrissességi központ", systemImage: "tray.full")
-                    }
-                } footer: {
-                    Text("Ezek a nézetek a teljes vagyon, a termékesemények és az adatok állapotát mutatják.")
-                }
+                developerToolsSection
 
-                Section("Titkosított biztonsági mentés") {
-                    Toggle("Engedélyezés", isOn: Binding(
-                        get: { encryptedBackupEnabled },
-                        set: { enabled in
-                            encryptedBackupEnabled = enabled
-                            BackupSecurityManager.isEnabled = enabled
-                            if enabled {
-                                store.save()
-                                notice = Notice(
-                                    title: "Titkosított mentés engedélyezve",
-                                    message: "A következő mentéstől az adatok titkosított másolatként is mentésre kerülnek."
-                                )
-                            } else {
-                                BackupSecurityManager.clearBackupFile()
-                                notice = Notice(
-                                    title: "Titkosított mentés letiltva",
-                                    message: "Az utolsó titkosított mentés fájlát töröltük, a kapcsoló kikapcsolt állapotban."
-                                )
-                            }
-                        }
-                    ))
+                backupSection
 
-                    if BackupSecurityManager.hasEncryptedBackup() {
-                        Button {
-                            BackupSecurityManager.clearBackupFile()
-                            notice = Notice(
-                                title: "Titkosított mentés törölve",
-                                message: "A biztonsági másolat törölve lett."
-                            )
-                        } label: {
-                            Label("Titkosított mentés törlése", systemImage: "trash")
-                                .foregroundStyle(DS.Color.negativeCream)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                } footer: {
-                    Text("A mentés helyileg marad, és felhasználói jelszó nélkül visszatölthető egy megerősített készüléken.")
-                }
+                cashAssetsSection
 
-                Section {
-                    ForEach(store.cashAssets) { asset in
-                        Button { editingAsset = asset } label: {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(asset.name).font(DS.rowTitle)
-                                    Text(assetMeta(asset))
-                                        .font(DS.meta)
-                                        .foregroundStyle(DS.Color.inkSoft(0.5))
-                                }
-                                Spacer()
-                                Text(Fmt.huf(store.convertToHUF(asset.estimatedBalance(),
-                                                                currency: asset.currency)))
-                                    .font(DS.font(13.5, .medium))
-                            }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    Button {
-                        isAddingAsset = true
-                    } label: {
-                        Label("Megtakarítási számla felvétele", systemImage: "plus")
-                    }
-                    Button {
-                        isAddingHolding = true
-                    } label: {
-                        Label("Értékpapír kézzel", systemImage: "plus")
-                    }
-                } header: {
-                    Text("Kamatozó megtakarítás")
-                } footer: {
-                    Text("A Revolut megtakarítási kivonatából automatikusan bekerül, a napi kamattal együtt. Kézzel csak akkor kell felvenni, ha olyan számlád van, amiről nincs beolvasható kivonat.")
-                }
+                watchedFoldersSection
 
-                Section {
-                    ForEach(Array(watchedFolderNames.enumerated()), id: \.offset) { index, name in
-                        HStack {
-                            Image(systemName: "folder")
-                                .foregroundStyle(DS.Color.coral)
-                            Text(name).font(DS.rowTitle)
-                            Spacer()
-                        }
-                        .swipeActions {
-                            Button("Törlés", role: .destructive) {
-                                WatchedFolders.remove(at: index)
-                                watchedFolderNames = WatchedFolders.urls.map(\.lastPathComponent)
-                            }
-                        }
-                    }
-                    Button {
-                        pickingFolder = true
-                    } label: {
-                        Label("Mappa kijelölése", systemImage: "folder.badge.plus")
-                    }
-                } header: {
-                    Text("Figyelt mappák")
-                } footer: {
-                    Text("Kijelölhetsz mappákat — akár az iCloud Drive-ban —, és az app minden megnyitáskor átnézi őket. Csak a felismerhető nevű kivonat-fájlokhoz nyúl (OTP, Revolut, Lightyear, Államkincstár); a fájljaid a helyükön maradnak.")
-                }
+                platformsSection
 
-                if !store.resolvedPlatforms.isEmpty {
-                    Section {
-                        ForEach(store.resolvedPlatforms) { platform in
-                            NavigationLink(platform.name) {
-                                PlatformEditor(platform: platform)
-                            }
-                            .swipeActions {
-                                Button("Törlés", role: .destructive) {
-                                    deletingPlatform = platform
-                                }
-                            }
-                        }
-                        .onMove { store.movePlatforms(fromOffsets: $0, toOffset: $1) }
-                    } header: {
-                        HStack {
-                            Text("Platformok")
-                            Spacer()
-                            EditButton().font(DS.meta).textCase(nil)
-                        }
-                    } footer: {
-                        Text("A „Szerkesztés” után a jobb oldali fogantyúval rendezheted át a kártyákat — a kezdőképernyő ezt a sorrendet követi. Amíg nem nyúlsz hozzá, érték szerint csökkenő a sorrend, és az új számla a lista végére kerül.\n\nHúzd balra a törléshez: az a számlát és a tételeit is elviszi, de a kivonat és a bankkapcsolat érintetlen marad, tehát a következő frissítés visszahozhatja.")
-                    }
-                }
+                iconSection
 
-                Section {
-                    Toggle("Az ikon kövesse a témát", isOn: Binding(
-                        get: { store.iconFollowsTheme },
-                        set: { store.iconFollowsTheme = $0 }
-                    ))
-                    .font(DS.rowTitle)
-                } footer: {
-                    Text("Minden témához tartozik egy app-ikon, ugyanabból a színpárból. Az iOS ilyenkor felugró értesítést mutat az ikoncseréről — ez a rendszer sajátja, nem lehet elnyomni, ezért van külön kapcsolóban.")
-                }
+                darkThemesSection
 
-                Section {
-                    ForEach(AppTheme.darkShelled) { themeRow($0) }
-                } header: {
-                    Text("Színtéma · sötét részletlapok")
-                } footer: {
-                    Text("A vászon világos módban világos, sötétben sötét — az app a rendszert követi. A platform-részletek viszont ezeknél a témáknál mindkét módban sötétek. Minden témának SAJÁT harmónia-sémája van (komplementer, triád, analóg, tetrád), más vezető árnyalattal — ezért nem hasonlítanak egymásra.")
-                }
+                lightThemesSection
 
-                Section {
-                    ForEach(AppTheme.lightShelled) { themeRow($0) }
-                } header: {
-                    Text("Világos részletlapok")
-                } footer: {
-                    Text("Ezeknél világos módban a platform-részletek is világosak — fehér vagy halványan árnyalt alapon, sötét szöveggel. A három akcentus mindenhol azonos érzékelt világosságú, hogy a kártyák egymás mellett kiegyensúlyozottak legyenek, a rajtuk lévő szöveg színe pedig mért kontraszt szerint dől el. A nyereség zöld, a veszteség piros marad minden témában — azok nem akcentusok.")
-                }
-
-                Section("Árfolyamforrás") {
-                    LabeledContent("EUR/HUF", value: Fmt.decimal(store.fxRate, max: 2))
-                    if let date = store.fxDate {
-                        LabeledContent("Jegyzés", value: "\(store.fxSource) · \(Fmt.day(date))")
-                    }
-                    let spreads = Set(store.conversionSpread.values.filter { $0 > 0 })
-                    if spreads.count == 1, let spread = spreads.first {
-                        LabeledContent("Átváltási árrés",
-                                       value: String(format: "%.2f%%", spread.doubleValue * 100))
-                    }
-                }
+                fxSection
             }
             .fileImporter(isPresented: $pickingFolder,
                           allowedContentTypes: [.folder]) { result in
@@ -298,9 +71,8 @@ struct SettingsView: View {
             .foregroundStyle(DS.Color.ink)
             .navigationTitle("Beállítások")
             .confirmationDialog(
-                deletingPlatform.map { "\($0.name) törlése" } ?? "Törlés",
-                isPresented: Binding(get: { deletingPlatform != nil },
-                                     set: { if !$0 { deletingPlatform = nil } }),
+                deletingPlatformTitle,
+                isPresented: deletingPlatformIsPresented,
                 titleVisibility: .visible
             ) {
                 Button("Törlés", role: .destructive) {
@@ -348,6 +120,339 @@ struct SettingsView: View {
 
     /// A kamat és az, hogy melyik napi kivonatból való — így látszik, hogy a
     /// szám részben becslés, nem tiszta mérés.
+    private func updateStatementReminder(_ enabled: Bool) {
+        statementReminder = enabled
+        Task { @MainActor in
+            if enabled, await Reminders.requestPermission() == false {
+                statementReminder = false
+                Reminders.Statements.isEnabled = false
+                notificationsDenied = true
+                return
+            }
+            Reminders.Statements.isEnabled = enabled
+            await Reminders.Statements.schedule()
+        }
+    }
+
+    @ViewBuilder
+    private var notificationSection: some View {
+        Section {
+            Toggle("Hitelkártya fizetési határidő", isOn: Binding(
+                get: { cardReminder },
+                set: { updateCardReminder($0) }
+            ))
+            Toggle("Havi kivonat-emlékeztető", isOn: Binding(
+                get: { statementReminder },
+                set: { updateStatementReminder($0) }
+            ))
+            Toggle("Banki engedély lejárata", isOn: Binding(
+                get: { consentReminder },
+                set: { updateConsentReminder($0) }
+            ))
+        } header: {
+            Text("Értesítések")
+        } footer: {
+            Text(verbatim: notificationFooter)
+        }
+    }
+
+    @ViewBuilder
+    private var bankSection: some View {
+        Section {
+            NavigationLink {
+                BankConnectionView()
+            } label: {
+                Label("Enable Banking", systemImage: "building.columns")
+            }
+        } header: {
+            Text("Bankkapcsolat")
+        }
+    }
+
+    @ViewBuilder
+    private var legalSection: some View {
+        Section {
+            NavigationLink {
+                LegalDocumentView(document: .privacy)
+            } label: {
+                Label("Adatkezelés", systemImage: "lock.shield")
+            }
+            NavigationLink {
+                LegalDocumentView(document: .terms)
+            } label: {
+                Label("Felhasználási feltételek", systemImage: "doc.text")
+            }
+        } header: {
+            Text("Jogi")
+        }
+    }
+
+    private func updateCardReminder(_ enabled: Bool) {
+        cardReminder = enabled
+        Task { @MainActor in
+            if enabled, await Reminders.requestPermission() == false {
+                cardReminder = false
+                PaymentReminder.isEnabled = false
+                notificationsDenied = true
+                return
+            }
+            PaymentReminder.isEnabled = enabled
+            let creditCard = store.creditCards.first
+            await PaymentReminder.schedule(for: creditCard)
+        }
+    }
+
+    private func updateConsentReminder(_ enabled: Bool) {
+        consentReminder = enabled
+        Task { @MainActor in
+            if enabled, await Reminders.requestPermission() == false {
+                consentReminder = false
+                Reminders.Consent.isEnabled = false
+                notificationsDenied = true
+                return
+            }
+            Reminders.Consent.isEnabled = enabled
+            let connections = banking.connections
+            await Reminders.Consent.schedule(for: connections)
+        }
+    }
+
+    private var notificationFooter: String {
+        let statementDay = Reminders.Statements.dayOfMonth
+        let consentLeadDays = Reminders.Consent.leadDays
+        return "Helyi értesítések: az időzítést az iOS tárolja, az app nem küld semmit sehova. A kártya-határidőről három nappal előbb, a kivonatokról minden hónap \(statementDay)-én, a banki engedély lejáratáról \(consentLeadDays) nappal előbb szólok — mindegyik reggel 9-kor."
+    }
+
+    private var deletingPlatformTitle: String {
+        guard let deletingPlatform else { return "Törlés" }
+        return deletingPlatform.name + " törlése"
+    }
+
+    private var deletingPlatformIsPresented: Binding<Bool> {
+        Binding(
+            get: { deletingPlatform != nil },
+            set: { if !$0 { deletingPlatform = nil } }
+        )
+    }
+
+    @ViewBuilder
+    private var developerToolsSection: some View {
+        Section {
+            NavigationLink {
+                AllocationPlannerView()
+            } label: {
+                Label("Célallokáció és új pénz elosztása", systemImage: "target")
+            }
+            NavigationLink {
+                MaturityCalendarView()
+            } label: {
+                Label("Kamat- és lejárati naptár", systemImage: "calendar.badge.clock")
+            }
+            NavigationLink {
+                DataFreshnessCenterView()
+            } label: {
+                Label("Adatfrissességi központ", systemImage: "tray.full")
+            }
+        } header: {
+            Text("Fejlesztői eszközök")
+        } footer: {
+            Text("Ezek a nézetek a teljes vagyon, a termékesemények és az adatok állapotát mutatják.")
+        }
+    }
+
+    @ViewBuilder
+    private var dataSection: some View {
+        Section {
+            Button {
+                isImporting = true
+            } label: {
+                Label("Kivonat beolvasása", systemImage: "square.and.arrow.down")
+            }
+            Button {
+                Task { await store.backfill() }
+            } label: {
+                Label("Görbe visszatöltése", systemImage: "clock.arrow.circlepath")
+            }
+            .disabled(store.holdings.isEmpty)
+        } header: {
+            Text("Adatok")
+        }
+    }
+
+    @ViewBuilder
+    private var backupSection: some View {
+        Section {
+            Toggle("Engedélyezés", isOn: Binding(
+                get: { encryptedBackupEnabled },
+                set: updateEncryptedBackup
+            ))
+
+            if BackupSecurityManager.hasEncryptedBackup() {
+                Button {
+                    BackupSecurityManager.clearBackupFile()
+                    notice = Notice(title: "Titkosított mentés törölve",
+                                    message: "A biztonsági másolat törölve lett.")
+                } label: {
+                    Label("Titkosított mentés törlése", systemImage: "trash")
+                        .foregroundStyle(DS.Color.negativeCream)
+                }
+                .buttonStyle(.plain)
+            }
+        } header: {
+            Text("Titkosított biztonsági mentés")
+        } footer: {
+            Text("A mentés helyileg marad, és felhasználói jelszó nélkül visszatölthető egy megerősített készüléken.")
+        }
+    }
+
+    @ViewBuilder
+    private var cashAssetsSection: some View {
+        Section {
+            ForEach(store.cashAssets) { asset in
+                Button { editingAsset = asset } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(asset.name).font(DS.rowTitle)
+                            Text(assetMeta(asset))
+                                .font(DS.meta)
+                                .foregroundStyle(DS.Color.inkSoft(0.5))
+                        }
+                        Spacer()
+                        Text(Fmt.huf(store.convertToHUF(asset.estimatedBalance(), currency: asset.currency)))
+                            .font(DS.font(13.5, .medium))
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+            Button { isAddingAsset = true } label: {
+                Label("Megtakarítási számla felvétele", systemImage: "plus")
+            }
+            Button { isAddingHolding = true } label: {
+                Label("Értékpapír kézzel", systemImage: "plus")
+            }
+        } header: {
+            Text("Kamatozó megtakarítás")
+        } footer: {
+            Text("A Revolut megtakarítási kivonatából automatikusan bekerül, a napi kamattal együtt. Kézzel csak akkor kell felvenni, ha olyan számlád van, amiről nincs beolvasható kivonat.")
+        }
+    }
+
+    @ViewBuilder
+    private var watchedFoldersSection: some View {
+        Section {
+            ForEach(Array(watchedFolderNames.enumerated()), id: \.offset) { index, name in
+                HStack {
+                    Image(systemName: "folder").foregroundStyle(DS.Color.coral)
+                    Text(name).font(DS.rowTitle)
+                    Spacer()
+                }
+                .swipeActions {
+                    Button("Törlés", role: .destructive) {
+                        WatchedFolders.remove(at: index)
+                        watchedFolderNames = WatchedFolders.urls.map(\.lastPathComponent)
+                    }
+                }
+            }
+            Button { pickingFolder = true } label: {
+                Label("Mappa kijelölése", systemImage: "folder.badge.plus")
+            }
+        } header: {
+            Text("Figyelt mappák")
+        } footer: {
+            Text("Kijelölhetsz mappákat — akár az iCloud Drive-ban —, és az app minden megnyitáskor átnézi őket. Csak a felismerhető nevű kivonat-fájlokhoz nyúl (OTP, Revolut, Lightyear, Államkincstár); a fájljaid a helyükön maradnak.")
+        }
+    }
+
+    @ViewBuilder
+    private var platformsSection: some View {
+        if !store.resolvedPlatforms.isEmpty {
+            Section {
+                ForEach(store.resolvedPlatforms) { platform in
+                    NavigationLink(platform.name) {
+                        PlatformEditor(platform: platform)
+                    }
+                    .swipeActions {
+                        Button("Törlés", role: .destructive) { deletingPlatform = platform }
+                    }
+                }
+                .onMove { store.movePlatforms(fromOffsets: $0, toOffset: $1) }
+            } header: {
+                HStack {
+                    Text("Platformok")
+                    Spacer()
+                    EditButton().font(DS.meta).textCase(nil)
+                }
+            } footer: {
+                Text("A „Szerkesztés” után a jobb oldali fogantyúval rendezheted át a kártyákat — a kezdőképernyő ezt a sorrendet követi. Amíg nem nyúlsz hozzá, érték szerint csökkenő a sorrend, és az új számla a lista végére kerül.\n\nHúzd balra a törléshez: az a számlát és a tételeit is elviszi, de a kivonat és a bankkapcsolat érintetlen marad, tehát a következő frissítés visszahozhatja.")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var iconSection: some View {
+        Section {
+            Toggle("Az ikon kövesse a témát", isOn: Binding(
+                get: { store.iconFollowsTheme },
+                set: { store.iconFollowsTheme = $0 }
+            ))
+            .font(DS.rowTitle)
+        } footer: {
+            Text("Minden témához tartozik egy app-ikon, ugyanabból a színpárból. Az iOS ilyenkor felugró értesítést mutat az ikoncseréről — ez a rendszer sajátja, nem lehet elnyomni, ezért van külön kapcsolóban.")
+        }
+    }
+
+    @ViewBuilder
+    private var darkThemesSection: some View {
+        Section {
+            ForEach(AppTheme.darkShelled) { themeRow($0) }
+        } header: {
+            Text("Színtéma · sötét részletlapok")
+        } footer: {
+            Text("A vászon világos módban világos, sötétben sötét — az app a rendszert követi. A platform-részletek viszont ezeknél a témáknál mindkét módban sötétek. Minden témának SAJÁT harmónia-sémája van (komplementer, triád, analóg, tetrád), más vezető árnyalattal — ezért nem hasonlítanak egymásra.")
+        }
+    }
+
+    @ViewBuilder
+    private var lightThemesSection: some View {
+        Section {
+            ForEach(AppTheme.lightShelled) { themeRow($0) }
+        } header: {
+            Text("Világos részletlapok")
+        } footer: {
+            Text("Ezeknél világos módban a platform-részletek is világosak — fehér vagy halványan árnyalt alapon, sötét szöveggel. A három akcentus mindenhol azonos érzékelt világosságú, hogy a kártyák egymás mellett kiegyensúlyozottak legyenek, a rajtuk lévő szöveg színe pedig mért kontraszt szerint dől el. A nyereség zöld, a veszteség piros marad minden témában — azok nem akcentusok.")
+        }
+    }
+
+    @ViewBuilder
+    private var fxSection: some View {
+        Section {
+            LabeledContent("EUR/HUF", value: Fmt.decimal(store.fxRate, max: 2))
+            if let date = store.fxDate {
+                LabeledContent("Jegyzés", value: store.fxSource + " · " + Fmt.day(date))
+            }
+            let spreads = Set(store.conversionSpread.values.filter { $0 > 0 })
+            if spreads.count == 1, let spread = spreads.first {
+                LabeledContent("Átváltási árrés", value: String(format: "%.2f%%", spread.doubleValue * 100))
+            }
+        } header: {
+            Text("Árfolyamforrás")
+        }
+    }
+
+    private func updateEncryptedBackup(_ enabled: Bool) {
+        encryptedBackupEnabled = enabled
+        BackupSecurityManager.isEnabled = enabled
+        if enabled {
+            store.save()
+            notice = Notice(title: "Titkosított mentés engedélyezve",
+                            message: "A következő mentéstől az adatok titkosított másolatként is mentésre kerülnek.")
+        } else {
+            BackupSecurityManager.clearBackupFile()
+            notice = Notice(title: "Titkosított mentés letiltva",
+                            message: "Az utolsó titkosított mentés fájlát töröltük, a kapcsoló kikapcsolt állapotban.")
+        }
+    }
+
     private func assetMeta(_ asset: CashAsset) -> String {
         var parts: [String] = []
         if let rate = asset.netDailyRate {
