@@ -42,13 +42,13 @@ sikeres, a telefonos telepítés sikerült, és a commit felkerült GitHubra.
 
 | Build | Munkacsomag | Állapot | Commit/tag |
 |---|---|---|---|
-| 21 | Tesztalapok, warningok, CI | blokkolt: a fizikai iPhone jelenleg unavailable/locked | cfa15f2 · 128cb0e · d6ed5ae |
-| 22 | Pénzügyi számítások és importok | ellenőrzés alatt | da29840 · d11092f · 2e022b2 · d4a2475 · bfe2fe7 |
-| 23 | Adatmentés, migráció, titkosítás | nincs elkezdve | — |
-| 24 | Értesítések és háttérfrissítés | nincs elkezdve | — |
-| 25 | Teljesítmény és görgetés | nincs elkezdve | — |
-| 26 | Beállítások és akadálymentesség | nincs elkezdve | — |
-| 27 | TestFlight Release Candidate | nincs elkezdve | — |
+| 21 | Tesztalapok, warningok, CI | elkészült (telefonos ellenőrzés halasztva) | cfa15f2 · 128cb0e · d6ed5ae |
+| 22 | Pénzügyi számítások és importok | elkészült (telefonos ellenőrzés halasztva) | da29840 · d11092f · 2e022b2 · d4a2475 · bfe2fe7 |
+| 23 | Adatmentés, migráció, titkosítás | elkészült (telefonos ellenőrzés halasztva) | 78d7d07 · 3e40878 |
+| 24 | Értesítések és háttérfrissítés | elkészült (telefonos ellenőrzés halasztva) | 588e110 |
+| 25 | Teljesítmény és görgetés | elkészült (telefonos mérés halasztva) | 8531f29 |
+| 26 | Beállítások és akadálymentesség | elkészült (telefonos ellenőrzés halasztva) | 02d1377 |
+| 27 | TestFlight Release Candidate | elkészült (telefonos ellenőrzés halasztva) | e01c963 |
 
 Engedélyezett állapotok:
 
@@ -56,6 +56,7 @@ Engedélyezett állapotok:
 - `folyamatban`
 - `ellenőrzés alatt`
 - `elkészült`
+- `elkészült (telefonos ellenőrzés halasztva)`
 - `blokkolt: <konkrét ok>`
 
 ## 4. Kötelező munkafolyamat
@@ -99,6 +100,14 @@ A telefonos telepítő használata:
 Ha az iPhone átmenetileg nem érhető el, a Release buildet befejezheted, de a
 mérföldkövet nem jelölheted késznek és nem tageled, amíg a telepítés nem
 sikerült.
+
+Ha a fizikai telefon a teljes munkamenet alatt nem áll rendelkezésre, a LUNA
+futtassa végig az alternatív ellenőrzést: determinisztikus unit tesztek,
+XcodeGen, minden célpont Release buildje, bundle-buildszám ellenőrzés,
+`git diff --check` és statikus/UI-teszt fordítás. Ilyenkor a mérföldkő
+implementációs része lezárható, de a státuszban és a jelentésben külön fel
+**kell tüntetni**, hogy a fizikai telepítés, a tag és a TestFlight-megfigyelés
+halasztva marad.
 
 ### 4.3 Biztonsági korlátok
 
@@ -636,6 +645,12 @@ Kézzel teszteld:
 - Nincs hamis pénzügyi százalék vagy duplikált import.
 - Nincs reprodukálható görgetési akadás.
 - A TestFlight build telepíthető és elindul.
+
+Alternatív ellenőrzési eredmény: a Build 27 XcodeGen után az iOS Release,
+watchOS target és az unsigned unit-test target is sikeresen lefordult; a kész
+app bundle `CFBundleVersion` értéke 27, és a `git diff --check` tiszta. A
+fizikai iPhone-telepítés, a napi használati megfigyelés, az Archive/App Store
+Connect feltöltés és a `release/1.0` tag a telefon hiánya miatt halasztva marad.
 
 ## 13. Végső Definition of Done
 
