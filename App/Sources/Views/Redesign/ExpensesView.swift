@@ -49,7 +49,7 @@ struct ExpensesView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 header
-                ScrollView {
+                ScrollView(.vertical) {
                     VStack(alignment: .leading, spacing: 22) {
                         if entries.isEmpty {
                             emptyState
@@ -67,9 +67,17 @@ struct ExpensesView: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
                     .padding(.bottom, DS.bottomPadding)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .readableWidth(sizeClass == .regular ? 820 : 560)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("expenses-scroll-content")
                 }
                 .scrollIndicators(.hidden)
+                // A függőleges ScrollView iOS-on oldalirányban is engedte a
+                // gumihúzást, ezért a teljes kártyaoszlop elcsúszhatott a
+                // képernyő széléig. Ha vízszintesen nincs túlméretes tartalom,
+                // a basedOnSize teljesen letiltja ezt a bounce-ot.
+                .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
             }
             .background(DS.Color.canvas)
             .foregroundStyle(DS.Color.ink)

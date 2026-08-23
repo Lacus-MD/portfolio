@@ -29,6 +29,25 @@ final class ScrollPerformanceTests: XCTestCase {
         }
     }
 
+    /// A Kiadások tartalma függőleges lista. Egy vízszintes húzás nem tolhatja
+    /// el az egész kártyaoszlopot, és nem válthat át rejtett oldalirányú
+    /// görgetésre.
+    func testExpensesContentStaysHorizontallyLocked() throws {
+        let expenses = app.tabBars.buttons["Kiadások"]
+        XCTAssertTrue(expenses.waitForExistence(timeout: 8))
+        expenses.tap()
+
+        let content = app.descendants(matching: .any)
+            .matching(identifier: "expenses-scroll-content").firstMatch
+        XCTAssertTrue(content.waitForExistence(timeout: 8))
+        let originalX = content.frame.minX
+
+        content.swipeRight(velocity: .slow)
+        XCTAssertEqual(content.frame.minX, originalX, accuracy: 1)
+        content.swipeLeft(velocity: .slow)
+        XCTAssertEqual(content.frame.minX, originalX, accuracy: 1)
+    }
+
     func testSettingsScrollDecelerationPerformance() throws {
         let settings = app.tabBars.buttons["Beállítások"]
         XCTAssertTrue(settings.waitForExistence(timeout: 8))

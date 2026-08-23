@@ -18,6 +18,9 @@ struct NewsView: View {
     @State private var items: [NewsItem] = []
     @State private var movers: [ConstituentMove] = []
     @State private var loading = true
+    /// Az adatcsere nem mozog és nem skálázódik: a betöltött szöveg csak
+    /// finoman áttűnik a helyőrzők után.
+    @State private var contentVisible = false
     @State private var reading: NewsItem?
 
     @State private var filter: Filter = .all
@@ -224,6 +227,7 @@ struct NewsView: View {
             .padding(EdgeInsets(top: 15, leading: 16, bottom: 14, trailing: 16))
                 .pastelCardBackground(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 16).stroke(DS.Color.inkSoft(0.075)))
+                .opacity(contentVisible ? 1 : 0)
         } else if loading {
             SkeletonBar(width: nil, height: 118)
         }
@@ -269,6 +273,7 @@ struct NewsView: View {
                     .foregroundStyle(DS.Color.inkSoft(0.5))
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.vertical, 10)
+                    .opacity(contentVisible ? 1 : 0)
             } else {
                 LazyVStack(alignment: .leading, spacing: 6) {
                     ForEach(visibleMovers) { mover in
@@ -280,6 +285,7 @@ struct NewsView: View {
                         }
                     }
                 }
+                .opacity(contentVisible ? 1 : 0)
             }
         }
     }
@@ -491,6 +497,7 @@ struct NewsView: View {
                     .foregroundStyle(DS.Color.inkSoft(0.5))
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.vertical, 10)
+                    .opacity(contentVisible ? 1 : 0)
             } else {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(generalItems.prefix(12)) { item in
@@ -499,6 +506,7 @@ struct NewsView: View {
                             .foregroundStyle(DS.Color.ink)
                     }
                 }
+                .opacity(contentVisible ? 1 : 0)
             }
         }
     }
@@ -605,6 +613,8 @@ struct NewsView: View {
     }
 
     private func load() async {
+        let shouldFadeIn = items.isEmpty && movers.isEmpty
+        if shouldFadeIn { contentVisible = false }
         loading = true
         // MainActor-állapotot a párhuzamos feladatok elindítása ELŐTT
         // másolunk ki; így a háttérfeladat nem nyúl SwiftUI-állapothoz.
@@ -614,12 +624,25 @@ struct NewsView: View {
             guard let currentComposition else { return [] }
             return await ConstituentWatcher().snapshot(of: currentComposition)
         }()
-        items = await feed
-        movers = await moved
+        // Együtt cseréljük le a két helyőrző-adathalmazt. Ha a feed előbb
+        // ért vissza, korábban eltűnhetett a skeleton, miközben a tételekre
+        // még vártunk — ez egy rövid üres villanást okozott a fade előtt.
+        let (fetchedItems, fetchedMovers) = await (feed, moved)
+        items = fetchedItems
+        movers = fetchedMovers
         NewsImagePreloader.shared.prefetch(
             items.compactMap { $0.imageURL.flatMap(URL.init(string:)) }
         )
         loading = false
+        if shouldFadeIn {
+            // Adjunk egy renderkört az új elrendezésnek láthatatlanul. Így
+            // nem a kártyák helye/mérete animálódik (popup-hatás), csak az
+            // opacitásuk indul el a következő képkockán.
+            try? await Task.sleep(for: .milliseconds(20))
+            withAnimation(.easeInOut(duration: 0.38)) { contentVisible = true }
+        } else {
+            contentVisible = true
+        }
         NewsPrewarmer.prewarm(items)
     }
 }
