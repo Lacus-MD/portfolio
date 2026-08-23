@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Kivonat-figyelő: ha a Letöltések mappa változik, lefuttatja a
+	     statement-watcher.sh-t. Eltávolítás:
+	     launchctl unload ~/Library/LaunchAgents/hu.halasz.portfolio.statement-watcher.plist
+	     rm ~/Library/LaunchAgents/hu.halasz.portfolio.statement-watcher.plist -->
+	<key>Label</key>
+	<string>hu.halasz.portfolio.statement-watcher</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/lacus/Portfolio/Tools/PortfolioFigyelo.app/Contents/MacOS/applet</string>
+	</array>
+	<key>WatchPaths</key>
+	<array>
+		<string>/Users/lacus/Downloads</string>
+	</array>
+	<key>StandardErrorPath</key>
+	<string>/Users/lacus/Library/Logs/portfolio-statement-watcher.err</string>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>ThrottleInterval</key>
+	<integer>10</integer>
+</dict>
+</plist>
