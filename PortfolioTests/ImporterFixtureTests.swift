@@ -14,9 +14,9 @@ final class ImporterFixtureTests: XCTestCase {
     }
 
     func testOTPAccountFixtureSeparatesCurrentAccountAndKeepsBalance() throws {
-        let result = try OTPImporter.import(
-            text: FixtureLoader.string(named: "otp-account", subdirectory: "OTP")
-        )
+        let fixture = try FixtureLoader.string(named: "otp-account", subdirectory: "OTP")
+        let result = try OTPImporter.import(text: fixture)
+        let repeated = try OTPImporter.import(text: fixture)
 
         if case .account = result.kind {
             // expected
@@ -27,12 +27,14 @@ final class ImporterFixtureTests: XCTestCase {
         assertDecimalEqual(result.opening, 1_000_000)
         assertDecimalEqual(result.closing, 1_388_290)
         XCTAssertTrue(result.warnings.isEmpty)
+        XCTAssertEqual(repeated.entries.count, result.entries.count)
+        assertDecimalEqual(repeated.closing, result.closing)
     }
 
     func testOTPCreditFixtureIsNegativeDebtAndParsesQuotedText() throws {
-        let result = try OTPImporter.import(
-            text: FixtureLoader.string(named: "otp-credit", subdirectory: "OTP")
-        )
+        let fixture = try FixtureLoader.string(named: "otp-credit", subdirectory: "OTP")
+        let result = try OTPImporter.import(text: fixture)
+        let repeated = try OTPImporter.import(text: fixture)
 
         if case .credit = result.kind {
             // expected
@@ -43,43 +45,49 @@ final class ImporterFixtureTests: XCTestCase {
         assertDecimalEqual(result.closing, -650_867)
         assertDecimalEqual(result.totalDebt ?? 0, 650_867)
         XCTAssertTrue(result.entries[0].text.contains("KÁVÉ, BELVÁROS"))
+        assertDecimalEqual(repeated.closing, result.closing)
     }
 
     func testRevolutSavingsFixtureKeepsInterestOutOfDeposits() throws {
-        let result = RevolutImporter.importSavings(
-            csv: try FixtureLoader.string(named: "revolut-savings", fileExtension: "csv", subdirectory: "Revolut"),
-            platformID: "revolut-savings"
-        )
+        let fixture = try FixtureLoader.string(named: "revolut-savings", fileExtension: "csv", subdirectory: "Revolut")
+        let result = RevolutImporter.importSavings(csv: fixture, platformID: "revolut-savings")
+        let repeated = RevolutImporter.importSavings(csv: fixture, platformID: "revolut-savings")
 
         assertDecimalEqual(result.asset.balance, 1_000_223)
         XCTAssertEqual(result.deposits.filter(\.isInternal).count, 1)
         XCTAssertEqual(result.deposits.filter { !$0.isInternal }.count, 1)
         XCTAssertTrue(result.warnings.contains { $0.contains("kamat") })
         XCTAssertEqual(result.dailyBalances.count, 3)
+        XCTAssertEqual(repeated.deposits.count, result.deposits.count)
+        assertDecimalEqual(repeated.asset.balance, result.asset.balance)
     }
 
     func testRevolutAccountFixtureHandlesQuotedCommaAndSkipsPending() throws {
-        let result = RevolutImporter.importAccount(
-            csv: try FixtureLoader.string(named: "revolut-account", fileExtension: "csv", subdirectory: "Revolut"),
-            platformID: "revolut-account"
-        )
+        let fixture = try FixtureLoader.string(named: "revolut-account", fileExtension: "csv", subdirectory: "Revolut")
+        let result = RevolutImporter.importAccount(csv: fixture, platformID: "revolut-account")
+        let repeated = RevolutImporter.importAccount(csv: fixture, platformID: "revolut-account")
 
         assertDecimalEqual(result.asset.balance, 900)
         XCTAssertEqual(result.deposits.count, 2)
         XCTAssertTrue(result.deposits.contains { $0.isInternal && $0.amountHUF == -100 })
         XCTAssertTrue(result.warnings.contains { $0.contains("függő") })
+        XCTAssertEqual(repeated.deposits.count, result.deposits.count)
+        assertDecimalEqual(repeated.asset.balance, result.asset.balance)
     }
 
     func testStateTreasuryFixtureHandlesSemicolonAndQuotedName() throws {
-        let result = try StateTreasuryImporter.import(
-            text: FixtureLoader.string(named: "state-treasury", fileExtension: "csv",
-                                       subdirectory: "StateTreasury"),
-            accountHint: "allamkincstar-export.csv"
-        )
+        let fixture = try FixtureLoader.string(named: "state-treasury", fileExtension: "csv",
+                                               subdirectory: "StateTreasury")
+        let result = try StateTreasuryImporter.import(text: fixture,
+                                                      accountHint: "allamkincstar-export.csv")
+        let repeated = try StateTreasuryImporter.import(text: fixture,
+                                                        accountHint: "allamkincstar-export.csv")
 
         XCTAssertEqual(result.positions, 2)
         assertDecimalEqual(result.asset.balance, 1_234_567)
         XCTAssertEqual(result.account, "treasury-allamkincstar")
         XCTAssertTrue(result.accountName.contains("allamkincstar") || result.accountName.contains("Államkincstár"))
+        assertDecimalEqual(repeated.asset.balance, result.asset.balance)
+        XCTAssertEqual(repeated.positions, result.positions)
     }
 }
