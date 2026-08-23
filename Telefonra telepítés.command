@@ -6,23 +6,21 @@ cd "$(dirname "$0")"
 
 # A devicectl azonosítója NEM ugyanaz, mint az xcodebuild -destination id-je
 # (a devicectl saját UUID-t ad, az xcodebuild a hardveres ECID-et várja).
-# Ezért nem is próbáljuk összekötni: generikus iOS-célra fordítunk, és
-# külön telepítünk a devicectl saját azonosítójával.
-#
-# A szűrésnél `grep -v unavailable` KELL: az "unavailable" tartalmazza az
-# "available" szót, így a puszta `grep available` a le sem csatlakoztatott
-# telefont is kiválasztaná.
-DEVICE_ID=$(xcrun devicectl list devices 2>/dev/null \
-  | grep -i physical | grep -i iphone | grep -vi unavailable \
-  | grep -oE '[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}' \
-  | head -1)
+# A telepítőt a saját telefonhoz rögzítjük. Az „első elérhető iPhone" veszélyes:
+# ha a saját készülék nincs a közelben, csendben egy másik családi telefonra
+# tehetné fel az appot.
+DEVICE_ID="F1C6000E-90D0-5D59-ABAC-232B64DE0DAF"
+DEVICE_LINE=$(xcrun devicectl list devices 2>/dev/null | grep -F "$DEVICE_ID")
 
-if [ -z "$DEVICE_ID" ]; then
-  echo "Nincs elérhető iPhone."
+# Az "unavailable" tartalmazza az "available" szót, ezért ezt külön kell
+# kizárni, nem elég egyetlen `grep available`.
+if [ -z "$DEVICE_LINE" ] || [[ "$DEVICE_LINE" == *unavailable* ]] \
+   || [[ "$DEVICE_LINE" != *available* ]]; then
+  echo "A saját iPhone jelenleg nem elérhető."
   echo "Csatlakoztasd kábellel, oldd fel a zárat, és fogadd el a"
   echo "'Megbízom ebben a gépben' kérdést. Jelenlegi állapot:"
   echo
-  xcrun devicectl list devices | grep -i physical
+  xcrun devicectl list devices | grep -F "$DEVICE_ID"
   exit 1
 fi
 echo "Eszköz: $DEVICE_ID"
