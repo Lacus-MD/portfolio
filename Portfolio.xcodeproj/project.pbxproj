@@ -13,6 +13,7 @@
 		07181607FCF2F974597DB02E /* QuoteService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BCD13FA79C064576B49556F /* QuoteService.swift */; };
 		088A94510101985DC3086613 /* PortfolioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6409E86AD3E1228A68F44BF9 /* PortfolioApp.swift */; };
 		0AEDCC626C3C0605246BA0BA /* TBSZRules.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEC626FE3713BDCF227BB285 /* TBSZRules.swift */; };
+		0D9C78FD1F93403ED55878EA /* DecimalAssertions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3C033DCED2DAB32F2805D72 /* DecimalAssertions.swift */; };
 		1070FD33D484C844CF9B5346 /* PortfolioWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F87057C9DD2D22FED21EF57D /* PortfolioWatchApp.swift */; };
 		11660BACBD77681E4306FD71 /* ExpensesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D18EE30B225A41C81D8631CE /* ExpensesView.swift */; };
 		11868EE51EC5DE2E5E79CD01 /* StatementImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09C4A4A88154D45DC40A96F1 /* StatementImporter.swift */; };
@@ -21,6 +22,7 @@
 		12B7E81BCCF9322B74B72E7C /* Holding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 869281FF4F5669F14BEF9560 /* Holding.swift */; };
 		136132C89299DC5DE253B3F8 /* PortfolioFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = E45203D0B5E35AF53B447678 /* PortfolioFile.swift */; };
 		1545B01D6455C959EDA7A237 /* StateTreasuryImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 140D379E4A4D0E7679866539 /* StateTreasuryImporter.swift */; };
+		16D5061C7D30058BB5767D75 /* PortfolioMathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E07A233A200E9FCCBAF5C357 /* PortfolioMathTests.swift */; };
 		19C366DB36DBAC4030837ED9 /* BackupSecurityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74B435E9269D19CB62430586 /* BackupSecurityManager.swift */; };
 		1A3C59B566D1B22B86F2DAF7 /* AllocationPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CB2A9DA4A7182FD97440001 /* AllocationPlan.swift */; };
 		1C10657B0CE83CEE1422C3E7 /* MaturityCalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24C6C534F5A7518F16463208 /* MaturityCalendarView.swift */; };
@@ -56,6 +58,7 @@
 		4A94A4189295B9AFECBAB96C /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE9C1E1A14F9A4D1FE75A3C1 /* HomeView.swift */; };
 		4E9D05AC1CFBB38D81C0DC7A /* NewsItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D4A06C2C545E1D69335CBE0 /* NewsItem.swift */; };
 		50E993F65D57434A4FDD4D2F /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76CE5FABED82E569C36274B9 /* ShareViewController.swift */; };
+		583BB502E9E9581340E85040 /* FixtureLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50202C7A6054D6BD22C41A9D /* FixtureLoader.swift */; };
 		58D285ADAE65A666C65A50AA /* Inbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = F127D237DC8AF14B53FC9870 /* Inbox.swift */; };
 		5A5B1A237F5BAA85CA848B98 /* ExpenseCategorizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F857508D2BBB8DA6A8245A5 /* ExpenseCategorizer.swift */; };
 		5AC642564DE2DCB3F1192F55 /* FundComposition.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4D4000B8105A889221EC9BE /* FundComposition.swift */; };
@@ -165,6 +168,13 @@
 			remoteGlobalIDString = A58ECBC82BD503615AB5D1DD;
 			remoteInfo = PortfolioWatch;
 		};
+		59CB65804FC8E2F7480A8531 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CFB3AA745775CA4C0AADC910 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 789DC743D0A274BE1C1826B4;
+			remoteInfo = Portfolio;
+		};
 		63AB4BE88E12B7FFDD0351D8 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = CFB3AA745775CA4C0AADC910 /* Project object */;
@@ -250,6 +260,7 @@
 		412A2A5FF3C6873B6423E97A /* BankConnectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BankConnectionView.swift; sourceTree = "<group>"; };
 		4DFD2A557AF572E6B449AECA /* CreditCardStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreditCardStatus.swift; sourceTree = "<group>"; };
 		4F2804F0564B83AB6F52C592 /* WatchWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWidgets.swift; sourceTree = "<group>"; };
+		50202C7A6054D6BD22C41A9D /* FixtureLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FixtureLoader.swift; sourceTree = "<group>"; };
 		517C261AFF4029959AAE6A95 /* GlassControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassControls.swift; sourceTree = "<group>"; };
 		567773178FAFDA753BA404F5 /* ExpenseEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseEntry.swift; sourceTree = "<group>"; };
 		591D1A3D01D1D63AA9B14781 /* AccentPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccentPalette.swift; sourceTree = "<group>"; };
@@ -282,7 +293,9 @@
 		8C8A705D287CC02D2D4667D4 /* HoldingMatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoldingMatcher.swift; sourceTree = "<group>"; };
 		9766CFBA1F188716FA0BF7AC /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9E1CA38EFECB6718D70685A4 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		A3C033DCED2DAB32F2805D72 /* DecimalAssertions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecimalAssertions.swift; sourceTree = "<group>"; };
 		A440B200E7B506084F928A53 /* ChartScrubber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartScrubber.swift; sourceTree = "<group>"; };
+		A6E1F84D7AD21018667959FE /* PortfolioTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PortfolioTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A9F16F12864EF973C67CCA2A /* ReadableWidth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadableWidth.swift; sourceTree = "<group>"; };
 		AA99B9E873978EC6DBAC4D19 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		AEC626FE3713BDCF227BB285 /* TBSZRules.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TBSZRules.swift; sourceTree = "<group>"; };
@@ -305,6 +318,7 @@
 		DC47AC0D4D8A5DA6F18D7576 /* SpendingAnalysis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpendingAnalysis.swift; sourceTree = "<group>"; };
 		E032AC752DEBB782B116DE31 /* BankConsentInfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BankConsentInfoView.swift; sourceTree = "<group>"; };
 		E038E86498126AE4ACF4A5BA /* TradeMarker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TradeMarker.swift; sourceTree = "<group>"; };
+		E07A233A200E9FCCBAF5C357 /* PortfolioMathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortfolioMathTests.swift; sourceTree = "<group>"; };
 		E0BEB500D386C672E6E03B46 /* PortfolioMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortfolioMath.swift; sourceTree = "<group>"; };
 		E0FD82CCF62E62D16A81C0A0 /* PlatformDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatformDetailView.swift; sourceTree = "<group>"; };
 		E3474C2C9B83EB1DE516FB24 /* PlatformCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatformCard.swift; sourceTree = "<group>"; };
@@ -387,6 +401,7 @@
 			children = (
 				B241FB5EC4F6E1884669A096 /* App */,
 				EB2357969547D7B1907E429F /* AppUITests */,
+				FC174BADBD08D82C83E8F198 /* PortfolioTests */,
 				3E33C963D01DDBB0F8316FC8 /* Share */,
 				911AEE8EF26D72B5837BFD17 /* Shared */,
 				28831662F3CFF08DE1231963 /* Watch */,
@@ -503,6 +518,15 @@
 			path = Sources;
 			sourceTree = "<group>";
 		};
+		BBD933A20F0959A4AB161562 /* Support */ = {
+			isa = PBXGroup;
+			children = (
+				A3C033DCED2DAB32F2805D72 /* DecimalAssertions.swift */,
+				50202C7A6054D6BD22C41A9D /* FixtureLoader.swift */,
+			);
+			path = Support;
+			sourceTree = "<group>";
+		};
 		CB02A2D4AB953D48A8A58C10 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
@@ -552,6 +576,7 @@
 			children = (
 				D240410543D26D3C580E9410 /* Portfolio.app */,
 				672D6A396199D471C64F1496 /* PortfolioShare.appex */,
+				A6E1F84D7AD21018667959FE /* PortfolioTests.xctest */,
 				003AE21EEA810C58F0F26714 /* PortfolioUITests.xctest */,
 				F31D2A99EB827C5A702C2322 /* PortfolioWatch.app */,
 				776EFAF9C84C6001B0AC228C /* PortfolioWatchWidgets.appex */,
@@ -566,6 +591,15 @@
 				4F2804F0564B83AB6F52C592 /* WatchWidgets.swift */,
 			);
 			path = Widgets;
+			sourceTree = "<group>";
+		};
+		FC174BADBD08D82C83E8F198 /* PortfolioTests */ = {
+			isa = PBXGroup;
+			children = (
+				BBD933A20F0959A4AB161562 /* Support */,
+				E07A233A200E9FCCBAF5C357 /* PortfolioMathTests.swift */,
+			);
+			path = PortfolioTests;
 			sourceTree = "<group>";
 		};
 		FF9A11C8A282EEDD93E6AE07 /* Model */ = {
@@ -606,6 +640,24 @@
 			productName = PortfolioShare;
 			productReference = 672D6A396199D471C64F1496 /* PortfolioShare.appex */;
 			productType = "com.apple.product-type.app-extension";
+		};
+		4F649C17F2FC1F53D5DB4B92 /* PortfolioTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CE46ADB3DD7C8FDA56E41BBE /* Build configuration list for PBXNativeTarget "PortfolioTests" */;
+			buildPhases = (
+				8F3C8F485CAA2FAE27BE63EE /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				6961260F16E7A00B8449536D /* PBXTargetDependency */,
+			);
+			name = PortfolioTests;
+			packageProductDependencies = (
+			);
+			productName = PortfolioTests;
+			productReference = A6E1F84D7AD21018667959FE /* PortfolioTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 		789DC743D0A274BE1C1826B4 /* Portfolio */ = {
 			isa = PBXNativeTarget;
@@ -714,6 +766,11 @@
 						DevelopmentTeam = YGU3DVQ6S8;
 						ProvisioningStyle = Automatic;
 					};
+					4F649C17F2FC1F53D5DB4B92 = {
+						DevelopmentTeam = YGU3DVQ6S8;
+						ProvisioningStyle = Automatic;
+						TestTargetID = 789DC743D0A274BE1C1826B4;
+					};
 					789DC743D0A274BE1C1826B4 = {
 						DevelopmentTeam = YGU3DVQ6S8;
 						ProvisioningStyle = Automatic;
@@ -753,6 +810,7 @@
 			targets = (
 				789DC743D0A274BE1C1826B4 /* Portfolio */,
 				1AFA730A2F46E08F725DA813 /* PortfolioShare */,
+				4F649C17F2FC1F53D5DB4B92 /* PortfolioTests */,
 				95A5767F7240607AE0D7B142 /* PortfolioUITests */,
 				A58ECBC82BD503615AB5D1DD /* PortfolioWatch */,
 				92E7C5122D72245DB59F0233 /* PortfolioWatchWidgets */,
@@ -873,6 +931,16 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		8F3C8F485CAA2FAE27BE63EE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0D9C78FD1F93403ED55878EA /* DecimalAssertions.swift in Sources */,
+				583BB502E9E9581340E85040 /* FixtureLoader.swift in Sources */,
+				16D5061C7D30058BB5767D75 /* PortfolioMathTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		AA5EA6B5B67EEAC20F0399E3 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -954,6 +1022,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		6961260F16E7A00B8449536D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 789DC743D0A274BE1C1826B4 /* Portfolio */;
+			targetProxy = 59CB65804FC8E2F7480A8531 /* PBXContainerItemProxy */;
+		};
 		87DA11AC023C701ED830C3E6 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 789DC743D0A274BE1C1826B4 /* Portfolio */;
@@ -1062,7 +1135,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 20;
+				CURRENT_PROJECT_VERSION = 21;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = YGU3DVQ6S8;
 				ENABLE_CODE_COVERAGE = NO;
@@ -1113,6 +1186,46 @@
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = 4;
 				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Debug;
+		};
+		7368342EE9FD0E5A0A9B98AF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = hu.halasz.portfolio.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Portfolio.app/Portfolio";
+				TEST_TARGET_NAME = Portfolio;
+			};
+			name = Release;
+		};
+		7D96D90944A142057BADE3A7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = hu.halasz.portfolio.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Portfolio.app/Portfolio";
+				TEST_TARGET_NAME = Portfolio;
 			};
 			name = Debug;
 		};
@@ -1171,7 +1284,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 20;
+				CURRENT_PROJECT_VERSION = 21;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = YGU3DVQ6S8;
 				ENABLE_CODE_COVERAGE = NO;
@@ -1411,6 +1524,15 @@
 			buildConfigurations = (
 				8DA494D1497A8893EFD89C9F /* Debug */,
 				ADE7A1984DCBB466E229C533 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		CE46ADB3DD7C8FDA56E41BBE /* Build configuration list for PBXNativeTarget "PortfolioTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7D96D90944A142057BADE3A7 /* Debug */,
+				7368342EE9FD0E5A0A9B98AF /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

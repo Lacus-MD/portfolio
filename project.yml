@@ -12,7 +12,7 @@ settings:
     # Az `NSUbiquitousContainers` beállítást (a Fájlok appban látható
     # „Portfólió" mappa) az iOS GYORSÍTÓTÁRAZZA, és csak akkor olvassa újra,
     # ha a build-szám nőtt. Ezért nem jelent meg a mappa.
-    CURRENT_PROJECT_VERSION: "20"
+    CURRENT_PROJECT_VERSION: "21"
     SWIFT_VERSION: "5.0"
     DEVELOPMENT_TEAM: YGU3DVQ6S8
     CODE_SIGN_STYLE: Automatic
@@ -154,6 +154,22 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: hu.halasz.portfolio.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Portfolio
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+
+  PortfolioTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: PortfolioTests
+    dependencies:
+      - target: Portfolio
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: hu.halasz.portfolio.tests
         GENERATE_INFOPLIST_FILE: YES
         TEST_TARGET_NAME: Portfolio
         TARGETED_DEVICE_FAMILY: "1,2"
