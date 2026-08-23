@@ -215,7 +215,6 @@ struct IndexedChart: View {
     /// el ide, tehát a befogadó nézetnek kell tudnia törölni.
     var externalScrub: Binding<Double?>? = nil
 
-    @State private var drawn = false
     @State private var localScrub: Double?
     private var scrub: Binding<Double?> { externalScrub ?? $localScrub }
 
@@ -225,34 +224,61 @@ struct IndexedChart: View {
             let all = series.flatMap(\.values)
             let low = all.min() ?? 0, high = all.max() ?? 1
             let scale = forcedScale ?? CurveBuilder.suggestedScale(all)
+            // Egyetlen aszinkron rajzfelület: a korábbi, platformonként
+            // késleltetett Path-animációk 2–4 másodpercig külön rétegeket
+            // kompozitáltak. Ettől a görbe darabonként töltött be, és közben
+            // a fő ScrollView is elveszíthetett egy képkockát. A Canvas a
+            // teljes statikus grafikont egyszerre adja át a renderelőnek.
             ZStack {
-                ForEach([0.34, 0.68], id: \.self) { ratio in
-                    Path { p in
-                        p.move(to: .init(x: 0, y: geo.size.height * ratio))
-                        p.addLine(to: .init(x: geo.size.width, y: geo.size.height * ratio))
-                    }
-                    .stroke(guideColor, style: .init(lineWidth: 1, dash: [4, 5]))
-                }
-                ForEach(Array(series.enumerated()), id: \.element.id) { index, item in
-                    let smoothed = CurveBuilder.smoothed(
-                        item.values, window: CurveBuilder.suggestedWindow(item.values.count))
-                    CurveBuilder.path(smoothed, xs: item.xs, in: geo.size,
-                                      low: low, high: high, scale: scale)
-                        .trim(from: 0, to: drawn ? 1 : 0)
-                        .stroke(item.color,
-                                style: .init(lineWidth: index == 0 ? 3 : 2.6, lineCap: .round))
-                        .animation(
-                            .timingCurve(0.33, 0, 0.15, 1, duration: 2.2)
-                                .delay(0.35 + Double(index) * 0.4),
-                            value: drawn
+                Canvas(opaque: false, colorMode: .nonLinear,
+                       rendersAsynchronously: true) { context, size in
+                    for ratio in [0.34, 0.68] {
+                        var guide = Path()
+                        guide.move(to: .init(x: 0, y: size.height * ratio))
+                        guide.addLine(to: .init(x: size.width, y: size.height * ratio))
+                        context.stroke(
+                            guide,
+                            with: .color(guideColor),
+                            style: .init(lineWidth: 1, dash: [4, 5])
                         )
-                    if let last = CurveBuilder.points(smoothed, xs: item.xs, in: geo.size,
-                                                      low: low, high: high, scale: scale).last {
-                        PulsingDot(color: item.color, size: 9)
-                            .position(last)
-                            .opacity(drawn ? 1 : 0)
-                            .animation(.easeIn(duration: 0.6).delay(1.2 + Double(index) * 0.4),
-                                       value: drawn)
+                    }
+
+                    for (index, item) in series.enumerated() {
+                        let smoothed = CurveBuilder.smoothed(
+                            item.values,
+                            window: CurveBuilder.suggestedWindow(item.values.count)
+                        )
+                        let path = CurveBuilder.path(
+                            smoothed, xs: item.xs, in: size,
+                            low: low, high: high, scale: scale
+                        )
+                        context.stroke(
+                            path,
+                            with: .color(item.color),
+                            style: .init(lineWidth: index == 0 ? 3 : 2.6,
+                                         lineCap: .round)
+                        )
+
+                        guard let last = CurveBuilder.points(
+                            smoothed, xs: item.xs, in: size,
+                            low: low, high: high, scale: scale
+                        ).last else { continue }
+                        let dotSize: CGFloat = 9
+                        let haloSize = dotSize * 1.85
+                        context.fill(
+                            Path(ellipseIn: CGRect(x: last.x - haloSize / 2,
+                                                  y: last.y - haloSize / 2,
+                                                  width: haloSize, height: haloSize)),
+                            with: .color(item.color.opacity(0.18))
+                        )
+                        let dotRect = CGRect(x: last.x - dotSize / 2,
+                                             y: last.y - dotSize / 2,
+                                             width: dotSize, height: dotSize)
+                        context.fill(Path(ellipseIn: dotRect),
+                                     with: .color(DS.Color.onShell()))
+                        context.stroke(Path(ellipseIn: dotRect),
+                                       with: .color(item.color),
+                                       lineWidth: dotSize * 0.25)
                     }
                 }
 
@@ -264,7 +290,6 @@ struct IndexedChart: View {
             }
             .contentShape(.rect)
             .scrubbable(width: geo.size.width, fraction: scrub)
-            .onAppear { drawn = true }
         }
     }
 }

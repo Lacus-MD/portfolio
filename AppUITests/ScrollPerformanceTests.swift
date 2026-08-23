@@ -46,6 +46,26 @@ final class ScrollPerformanceTests: XCTestCase {
         }
     }
 
+    /// A Portfólió fül első görgetését méri, miközben a közös vagyon-grafikon
+    /// először megjelenik. Ez védi ki, hogy egy későbbi rajzolási animáció
+    /// ismét a felület fő szálán, darabonként építse fel a görbéket.
+    func testPortfolioChartInitialScrollPerformance() throws {
+        let portfolio = app.tabBars.buttons["Portfólió"]
+        XCTAssertTrue(portfolio.waitForExistence(timeout: 8))
+        portfolio.tap()
+
+        let scroller = firstScrollableElement()
+        XCTAssertTrue(scroller.waitForExistence(timeout: 8))
+
+        let options = XCTMeasureOptions()
+        options.iterationCount = 3
+        measure(metrics: [XCTOSSignpostMetric.scrollDecelerationMetric],
+                options: options) {
+            scroller.swipeUp(velocity: .fast)
+            scroller.swipeDown(velocity: .fast)
+        }
+    }
+
     /// Külön választja a tartós renderelési költséget az induláskor befejeződő
     /// hálózati/iCloud feladatoktól. Ha ez sima, de a fenti nem, akkor nem a
     /// List rajzolása, hanem egy háttérfeladat főszálra visszatérése a hitch.
