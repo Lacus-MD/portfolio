@@ -65,7 +65,7 @@ struct NewsView: View {
             VStack(spacing: 0) {
                 header
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
+                    LazyVStack(alignment: .leading, spacing: 24) {
                         summaryCard
                         holdingsSection
                         marketSection
@@ -260,11 +260,13 @@ struct NewsView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.vertical, 10)
             } else {
-                ForEach(visibleMovers) { mover in
-                    VStack(alignment: .leading, spacing: 6) {
-                        holdingCard(mover)
-                        ForEach(news(for: mover)) { item in
-                            attachedNews(item, accent: DS.Color.coral)
+                LazyVStack(alignment: .leading, spacing: 6) {
+                    ForEach(visibleMovers) { mover in
+                        VStack(alignment: .leading, spacing: 6) {
+                            holdingCard(mover)
+                            ForEach(news(for: mover)) { item in
+                                attachedNews(item, accent: DS.Color.coral)
+                            }
                         }
                     }
                 }
@@ -480,10 +482,12 @@ struct NewsView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.vertical, 10)
             } else {
-                ForEach(generalItems.prefix(12)) { item in
-                    Button { reading = item } label: { marketRow(item) }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(DS.Color.ink)
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(generalItems.prefix(12)) { item in
+                        Button { reading = item } label: { marketRow(item) }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(DS.Color.ink)
+                    }
                 }
             }
         }
@@ -524,11 +528,7 @@ struct NewsView: View {
     @ViewBuilder private func thumbnail(_ item: NewsItem) -> some View {
         let shape = RoundedRectangle(cornerRadius: 9, style: .continuous)
         if let raw = item.imageURL, let url = URL(string: raw) {
-            AsyncImage(url: url) { image in
-                image.resizable().scaledToFill()
-            } placeholder: {
-                DS.Color.inkSoft(0.06)
-            }
+            CachedNewsThumbnail(url: url)
             .frame(width: 52, height: 52)
             .clipShape(shape)
         } else {
@@ -603,8 +603,33 @@ struct NewsView: View {
         }()
         items = await feed
         movers = await moved
+        NewsImagePreloader.shared.prefetch(
+            items.compactMap { $0.imageURL.flatMap(URL.init(string:)) }
+        )
         loading = false
         NewsPrewarmer.prewarm(items)
+    }
+}
+
+/// A decoded thumbnail that never performs image work in the scroll view's
+/// render pass. The preloader fills the cache as soon as the feed arrives.
+private struct CachedNewsThumbnail: View {
+    let url: URL
+    @State private var image: UIImage?
+
+    var body: some View {
+        Group {
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                DS.Color.inkSoft(0.06)
+            }
+        }
+        .task(id: url) {
+            image = await NewsImagePreloader.shared.load(url)
+        }
     }
 }
 

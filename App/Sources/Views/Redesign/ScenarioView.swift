@@ -33,7 +33,7 @@ struct ScenarioView: View {
         // lapként lefelé kellett volna elhúzni, és a lap alapból alacsonyabb
         // is volt, ezért az eredményhez görgetni kellett.
         ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
+            LazyVStack(alignment: .leading, spacing: 22) {
                 disclaimer
                 inputs
                 outcome

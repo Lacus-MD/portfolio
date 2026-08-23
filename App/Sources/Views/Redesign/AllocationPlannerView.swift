@@ -46,7 +46,7 @@ struct AllocationPlannerView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
+            LazyVStack(spacing: 16) {
                 card {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Befektethető vagyon").font(DS.rowTitle)
