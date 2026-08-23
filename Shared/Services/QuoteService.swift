@@ -1,6 +1,6 @@
 import Foundation
 
-struct Quote {
+struct Quote: Sendable {
     let isin: String
     let price: Decimal
     let changePercent: Double

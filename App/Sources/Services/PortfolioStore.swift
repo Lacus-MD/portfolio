@@ -285,23 +285,51 @@ final class PortfolioStore {
         lastError = nil
         defer { isRefreshing = false }
 
-        var failures: [String] = []
+        // A hálózat és a JSON-dekódolás nem a görgető főszál feladata. A
+        // korábbi ciklus minden egyes papír válaszánál külön módosította a
+        // megfigyelt `quotes` szótárat, ezért a teljes SwiftUI-fa többször
+        // egymás után újraértékelődött. Most minden kérés párhuzamosan fut,
+        // az eredményt pedig egyetlen állapotfrissítéssel adjuk át a UI-nak.
+        async let latestFX: FXService.Snapshot? = try? await fxService.current()
 
-        do {
-            let snapshot = try await fxService.current()
+        let requests = holdings.map { (isin: $0.isin, ticker: $0.ticker) }
+        let service = quoteService
+        let fetched = await withTaskGroup(
+            of: (ticker: String, quote: Quote?).self,
+            returning: [(ticker: String, quote: Quote?)].self
+        ) { group in
+            for request in requests {
+                group.addTask {
+                    let quote = try? await service.quote(isin: request.isin,
+                                                         ticker: request.ticker)
+                    return (request.ticker, quote)
+                }
+            }
+            var result: [(ticker: String, quote: Quote?)] = []
+            result.reserveCapacity(requests.count)
+            for await item in group { result.append(item) }
+            return result
+        }
+
+        var failures: [String] = []
+        if let snapshot = await latestFX {
             fxRate = snapshot.eurHUF
             usdRate = snapshot.usdHUF ?? 0
             fxDate = snapshot.date
             fxSource = snapshot.source
-        } catch { failures.append("EUR/HUF árfolyam") }
+        } else {
+            failures.append("EUR/HUF árfolyam")
+        }
 
-        for holding in holdings {
-            do {
-                quotes[holding.isin] = try await quoteService.quote(isin: holding.isin, ticker: holding.ticker)
-            } catch {
-                failures.append(holding.ticker)
+        var refreshedQuotes = quotes
+        for item in fetched {
+            if let quote = item.quote {
+                refreshedQuotes[quote.isin] = quote
+            } else {
+                failures.append(item.ticker)
             }
         }
+        quotes = refreshedQuotes
 
         if !failures.isEmpty {
             lastError = "Nem sikerült frissíteni: " + failures.joined(separator: ", ")
@@ -584,10 +612,27 @@ final class PortfolioStore {
 
     /// Indulási sorrend: előbb a megosztólapról érkezett fájlok, aztán a
     /// frissítés — fordítva a beolvasás eredménye nem látszana azonnal.
+    private var startupTask: Task<[String], Never>?
+
     @discardableResult
     func startup() async -> [String] {
-        let report = await processInbox()
-        await refresh()
+        // A HomeView, az aktív scene és az iCloud-figyelő közel egyszerre is
+        // kérhet indulást. Egyetlen közös feladatra várnak, nem indítanak
+        // párhuzamos fájlbejárást és hálózati frissítést.
+        if let running = startupTask { return await running.value }
+
+        let task = Task { [self] in
+            let report = await processInbox()
+            // iCloud metadata-frissítés gyakran érkezik úgy is, hogy nincs új
+            // kivonat. Ilyenkor öt percen belül nem kérjük le újra az összes
+            // árfolyamot, és nem mozgatjuk meg feleslegesen a teljes UI-fát.
+            let stale = lastRefresh.map { Date().timeIntervalSince($0) >= 5 * 60 } ?? true
+            if stale { await refresh() }
+            return report
+        }
+        startupTask = task
+        let report = await task.value
+        startupTask = nil
         return report
     }
 

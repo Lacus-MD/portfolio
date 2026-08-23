@@ -32,7 +32,7 @@ struct PlatformDetailView: View {
         // Fix panelként ez nem görgethető és tömör: a tartalom egyszerűen
         // kifutott a képernyőből.
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 24) {
                 VStack(alignment: .leading, spacing: 20) {
                     header
                     statPair

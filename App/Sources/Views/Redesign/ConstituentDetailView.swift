@@ -19,7 +19,7 @@ struct ConstituentDetailView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 22) {
+                VStack(alignment: .leading, spacing: 22) {
                     price
                     chart
                     facts

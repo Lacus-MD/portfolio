@@ -12,11 +12,28 @@ final class NewsImagePreloader: @unchecked Sendable {
     static let shared = NewsImagePreloader()
 
     private let cache = NSCache<NSURL, UIImage>()
-    private let queue = DispatchQueue(
-        label: "hu.halasz.portfolio.news-image-preloader",
-        qos: .utility,
-        attributes: .concurrent
-    )
+    private let stateQueue = DispatchQueue(label: "hu.halasz.portfolio.news-image-state")
+    private var waiters: [URL: [(UIImage?) -> Void]] = [:]
+
+    /// Két dekódolásnál több egyszerre nem futhat. Az előző megoldás negyven
+    /// `URLSession.shared` feladatot indított el azonnal; ugyan háttérszálon
+    /// dolgoztak, de együtt elfoglalták a CPU-t és a memória-sávszélességet,
+    /// amitől az előtérben minden fül görgetése megakadt.
+    private let session: URLSession = {
+        let configuration = URLSessionConfiguration.default
+        configuration.requestCachePolicy = .returnCacheDataElseLoad
+        configuration.urlCache = .shared
+        configuration.httpMaximumConnectionsPerHost = 2
+        configuration.timeoutIntervalForRequest = 20
+
+        let delegateQueue = OperationQueue()
+        delegateQueue.name = "hu.halasz.portfolio.news-image-decode"
+        delegateQueue.qualityOfService = .utility
+        delegateQueue.maxConcurrentOperationCount = 2
+        return URLSession(configuration: configuration,
+                          delegate: nil,
+                          delegateQueue: delegateQueue)
+    }()
 
     private init() {
         cache.countLimit = 48
@@ -27,15 +44,14 @@ final class NewsImagePreloader: @unchecked Sendable {
         cache.object(forKey: url as NSURL)
     }
 
-    /// Starts background work for the next screenful. Existing/in-flight
-    /// requests are harmlessly skipped by the cache check.
+    /// Csak a következő néhány képernyőnyi képet készíti elő. A többi majd
+    /// akkor jön, amikor tényleg közel kerül a látható tartományhoz.
     func prefetch(_ urls: [URL]) {
         var seen = Set<URL>()
-        for url in urls where seen.insert(url).inserted {
+        let nextScreenful = urls.filter { seen.insert($0).inserted }.prefix(16)
+        for url in nextScreenful {
             guard image(for: url) == nil else { continue }
-            queue.async { [weak self] in
-                self?.loadSynchronously(url)
-            }
+            request(url) { _ in }
         }
     }
 
@@ -44,24 +60,50 @@ final class NewsImagePreloader: @unchecked Sendable {
         if let cached = image(for: url) { return cached }
 
         return await withCheckedContinuation { continuation in
-            var request = URLRequest(url: url)
-            request.cachePolicy = .returnCacheDataElseLoad
-            URLSession.shared.dataTask(with: request) { [weak self] data, _, _ in
-                let image = data.flatMap(Self.decode)
-                if let image { self?.store(image, for: url) }
+            request(url) { image in
                 continuation.resume(returning: image)
+            }
+        }
+    }
+
+    /// Azonos URL-hez csak egy hálózati/dekódoló feladat fut; az előtöltő és
+    /// a látható cella ugyanannak az eredményére vár. Így gyors görgetésnél
+    /// sem duplázzuk meg a munkát.
+    private func request(_ url: URL, completion: @escaping (UIImage?) -> Void) {
+        if let cached = image(for: url) {
+            completion(cached)
+            return
+        }
+
+        stateQueue.async { [weak self] in
+            guard let self else { return }
+            if let cached = self.image(for: url) {
+                completion(cached)
+                return
+            }
+            if self.waiters[url] != nil {
+                self.waiters[url]?.append(completion)
+                return
+            }
+            self.waiters[url] = [completion]
+
+            var urlRequest = URLRequest(url: url)
+            urlRequest.cachePolicy = .returnCacheDataElseLoad
+            self.session.dataTask(with: urlRequest) { [weak self] data, response, _ in
+                let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+                let image = (200..<300).contains(status) ? data.flatMap(Self.decode) : nil
+                if let image { self?.store(image, for: url) }
+                self?.finish(url, image: image)
             }.resume()
         }
     }
 
-    private func loadSynchronously(_ url: URL) {
-        guard image(for: url) == nil else { return }
-        var request = URLRequest(url: url)
-        request.cachePolicy = .returnCacheDataElseLoad
-        URLSession.shared.dataTask(with: request) { [weak self] data, _, _ in
-            guard let data, let image = Self.decode(data) else { return }
-            self?.store(image, for: url)
-        }.resume()
+    private func finish(_ url: URL, image: UIImage?) {
+        stateQueue.async { [weak self] in
+            guard let self else { return }
+            let completions = self.waiters.removeValue(forKey: url) ?? []
+            completions.forEach { $0(image) }
+        }
     }
 
     private func store(_ image: UIImage, for url: URL) {

@@ -1,26 +1,22 @@
 import SwiftUI
 
-/// Lélegző (pulzáló) helyőrző a betöltés idejére.
+/// Nyugodt helyőrző a betöltés idejére.
 ///
 /// Miért nem pörgő kerék: a kerék csak annyit mond, hogy „várj". A helyőrző
 /// megmutatja, MI fog odakerülni és mekkora helyet foglal, így a tartalom
 /// megérkezésekor nem ugrik szét a lap. A lélegzés ritmusa lassú (1,6 s),
 /// mert egy vagyonkijelzőnél a nyugtalan felület rossz érzetet ad.
 ///
-/// A „csökkentett mozgás" beállítást tiszteletben tartjuk: ott nincs animáció,
-/// csak egy állandó, halvány kitöltés.
+/// Korábban minden egyes sáv külön, végtelen animációt futtatott. Egy híroldal
+/// betöltésekor ez egyszerre több tucat aktív réteget jelentett, ráadásul a
+/// hálózati timeout alatt sokáig. Az állandó, halvány kitöltés megtartja a
+/// stabil elrendezést, és egyetlen képkockát sem kér a görgetéstől.
 struct Breathing: ViewModifier {
     var delay: Double = 0
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var inhaled = false
 
     func body(content: Content) -> some View {
         content
-            .opacity(reduceMotion ? 0.5 : (inhaled ? 0.72 : 0.3))
-            .animation(reduceMotion ? nil
-                       : .easeInOut(duration: 1.6).repeatForever(autoreverses: true).delay(delay),
-                       value: inhaled)
-            .onAppear { inhaled = true }
+            .opacity(0.42)
     }
 }
 

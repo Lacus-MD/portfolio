@@ -12,20 +12,24 @@ import SwiftUI
 /// Ezzel kiváltjuk a fejléc fehér menügombját és az alsó „összevetés" gombot is:
 /// mindkettő egy-egy hely volt, nem művelet, tehát fülként a helyük.
 struct RootTabView: View {
-    @Environment(PortfolioStore.self) private var store
+    @State private var selection: Destination = .portfolio
+
+    private enum Destination: Hashable {
+        case portfolio, news, expenses, settings
+    }
 
     var body: some View {
-        TabView {
-            Tab("Portfólió", systemImage: "chart.pie.fill") {
+        TabView(selection: $selection) {
+            Tab("Portfólió", systemImage: "chart.pie.fill", value: .portfolio) {
                 HomeView()
             }
-            Tab("Hírek", systemImage: "newspaper.fill") {
-                NewsView()
+            Tab("Hírek", systemImage: "newspaper.fill", value: .news) {
+                NewsView(isActive: selection == .news)
             }
-            Tab("Kiadások", systemImage: "creditcard.fill") {
+            Tab("Kiadások", systemImage: "creditcard.fill", value: .expenses) {
                 ExpensesView()
             }
-            Tab("Beállítások", systemImage: "gearshape.fill") {
+            Tab("Beállítások", systemImage: "gearshape.fill", value: .settings) {
                 SettingsView()
             }
         }

@@ -50,7 +50,7 @@ struct ExpensesView: View {
             VStack(spacing: 0) {
                 header
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 22) {
+                    VStack(alignment: .leading, spacing: 22) {
                         if entries.isEmpty {
                             emptyState
                         } else {

@@ -61,31 +61,26 @@ struct RangeChips: View {
     }
 }
 
-/// Lüktető pont a görbe végén: „itt tartunk most".
+/// Pont a görbe végén: „itt tartunk most".
 ///
-/// A pulzálás lassú és halvány — egy vagyonkijelzőn a villogás idegesítő
-/// lenne. Két másodperces lélegzet, nem villanás.
+/// Korábban a külső kör `repeatForever` animációval lüktetett. A `TabView`
+/// az első fület a többi mögött is életben tartja, ezért ez az animáció a
+/// Hírek, Kiadások és Beállítások görgetése közben is folyamatos kompozitálást
+/// kért a GPU-tól. A statikus, halvány glória ugyanazt a jelentést őrzi meg,
+/// állandó képkockaterhelés nélkül.
 struct PulsingDot: View {
     var color: Color
     var size: CGFloat = 12
-    @State private var expanded = false
 
     var body: some View {
         ZStack {
             Circle()
-                .fill(color.opacity(0.35))
-                .frame(width: size * 2.1, height: size * 2.1)
-                .scaleEffect(expanded ? 1 : 0.55)
-                .opacity(expanded ? 0 : 0.7)
+                .fill(color.opacity(0.18))
+                .frame(width: size * 1.85, height: size * 1.85)
             Circle()
                 .fill(DS.Color.onShell())
                 .stroke(color, lineWidth: size * 0.25)
                 .frame(width: size, height: size)
-        }
-        .onAppear {
-            withAnimation(.easeOut(duration: 2).repeatForever(autoreverses: false)) {
-                expanded = true
-            }
         }
     }
 }

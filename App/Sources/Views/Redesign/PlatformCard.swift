@@ -88,24 +88,28 @@ struct PlatformCard: View {
     private var cardSurface: some View {
         let shape = RoundedRectangle(cornerRadius: DS.R.platformCard, style: .continuous)
         return shape
-            .fill(
-                LinearGradient(colors: palette.baseColors,
-                               startPoint: .leading, endPoint: .trailing)
-            )
+            .fill(palette.baseColors.first ?? .clear)
+            .shadow(color: palette.shadow, radius: 10, x: 0, y: 5)
             .overlay {
-                RadialGradient(
-                    colors: [
-                        palette.cornerColors[0].opacity(isFeatured ? 0.78 : 0.42),
-                        palette.cornerColors[1].opacity(isFeatured ? 0.40 : 0.18),
-                        .clear
-                    ],
-                    center: UnitPoint(x: 0.98, y: 0.04),
-                    startRadius: 0,
-                    endRadius: 170
+                shape.fill(
+                    LinearGradient(colors: palette.baseColors,
+                                   startPoint: .leading, endPoint: .trailing)
                 )
             }
-            .clipShape(shape)
-            .shadow(color: palette.shadow, radius: 10, x: 0, y: 5)
+            .overlay {
+                shape.fill(
+                    RadialGradient(
+                        colors: [
+                            palette.cornerColors[0].opacity(isFeatured ? 0.78 : 0.42),
+                            palette.cornerColors[1].opacity(isFeatured ? 0.40 : 0.18),
+                            .clear
+                        ],
+                        center: UnitPoint(x: 0.98, y: 0.04),
+                        startRadius: 0,
+                        endRadius: 170
+                    )
+                )
+            }
     }
 
     @ViewBuilder private var accountGlyph: some View {

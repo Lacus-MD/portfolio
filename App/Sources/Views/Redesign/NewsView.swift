@@ -11,6 +11,7 @@ import SwiftUI
 /// Itt a natív `TabView` sávja marad — az az app bevett mintája —, ezért a
 /// görgetés alul a `DS.bottomPadding`-gel hagy neki helyet.
 struct NewsView: View {
+    var isActive = true
     @Environment(PortfolioStore.self) private var store
     @Environment(\.horizontalSizeClass) private var sizeClass
 
@@ -65,7 +66,11 @@ struct NewsView: View {
             VStack(spacing: 0) {
                 header
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 24) {
+                    // Négy nagy szekciót érdemes előre felépíteni. A külső
+                    // LazyVStack ezeket pont görgetés közben hozta létre,
+                    // ezért a sorhatároknál képkockák estek ki. A hosszú,
+                    // ismétlődő hírsorok belül továbbra is lusták.
+                    VStack(alignment: .leading, spacing: 24) {
                         summaryCard
                         holdingsSection
                         marketSection
@@ -86,7 +91,12 @@ struct NewsView: View {
             .overlay(alignment: .bottom) { undoToast }
             .sheet(item: $reading) { NewsReader(item: $0) }
         }
-        .task { await load() }
+        // A TabView a nem kiválasztott füleket is életben tartja. Hírt és
+        // képet csak akkor töltünk, amikor a Hírek tényleg látható.
+        .task(id: isActive) {
+            guard isActive, items.isEmpty else { return }
+            await load()
+        }
     }
 
     // MARK: - Fejléc
@@ -596,10 +606,13 @@ struct NewsView: View {
 
     private func load() async {
         loading = true
+        // MainActor-állapotot a párhuzamos feladatok elindítása ELŐTT
+        // másolunk ki; így a háttérfeladat nem nyúl SwiftUI-állapothoz.
+        let currentComposition = composition
         async let feed = NewsService().fetch(limit: 40)
         async let moved: [ConstituentMove] = {
-            guard let composition else { return [] }
-            return await ConstituentWatcher().snapshot(of: composition)
+            guard let currentComposition else { return [] }
+            return await ConstituentWatcher().snapshot(of: currentComposition)
         }()
         items = await feed
         movers = await moved

@@ -25,13 +25,21 @@ struct PastelPanelBackground<S: Shape>: View {
 
     var body: some View {
         shape
-            .fill(
+            // Az árnyék csak egy egyszerű alakzaton készül. Korábban a két
+            // gradientet előbb össze kellett kompozitálni és clipelni, majd
+            // erről a teljes offscreen képről számolódott az árnyék minden
+            // kártyánál. Görgetés közben ez volt a legdrágább közös réteg.
+            .fill(palette.baseColors.first ?? .clear)
+            .shadow(color: palette.shadow.opacity(opacity), radius: 10, x: 0, y: 5)
+            .overlay {
+                shape.fill(
                 LinearGradient(
                     colors: palette.baseColors,
                     startPoint: .leading,
                     endPoint: .trailing
                 )
-            )
+                )
+            }
             .overlay {
                 shape.fill(
                     RadialGradient(
@@ -46,8 +54,6 @@ struct PastelPanelBackground<S: Shape>: View {
                     )
                 )
             }
-            .clipShape(shape)
-            .shadow(color: palette.shadow.opacity(opacity), radius: 10, x: 0, y: 5)
             .opacity(opacity)
     }
 }
