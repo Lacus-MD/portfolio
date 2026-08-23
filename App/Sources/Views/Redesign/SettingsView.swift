@@ -34,6 +34,8 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
+                themesSection
+
                 bankSection
                 legalSection
 
@@ -50,12 +52,6 @@ struct SettingsView: View {
                 watchedFoldersSection
 
                 platformsSection
-
-                iconSection
-
-                darkThemesSection
-
-                lightThemesSection
 
                 fxSection
             }
@@ -430,37 +426,52 @@ struct SettingsView: View {
     }
 
     @ViewBuilder
-    private var iconSection: some View {
+    private var themesSection: some View {
         Section {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Megjelenés")
+                    .font(DS.meta)
+                    .foregroundStyle(DS.Color.inkSoft(0.62))
+
+                Picker("Megjelenés", selection: Binding(
+                    get: { store.appearanceMode },
+                    set: { store.setAppearanceMode($0) }
+                )) {
+                    ForEach(AppAppearanceMode.allCases) { mode in
+                        Label(mode.title, systemImage: mode.symbol).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+            .padding(.vertical, 4)
+
+            ThemeGallery(
+                title: "Világos paletták",
+                subtitle: "napfényes változat",
+                themes: AppTheme.all,
+                selectedID: store.themeID,
+                isDark: false,
+                onSelect: store.setTheme
+            )
+
+            ThemeGallery(
+                title: "Sötét párok",
+                subtitle: "ugyanazok a színek, mély tónuson",
+                themes: AppTheme.all,
+                selectedID: store.themeID,
+                isDark: true,
+                onSelect: store.setTheme
+            )
+
             Toggle("Az ikon kövesse a témát", isOn: Binding(
                 get: { store.iconFollowsTheme },
                 set: { store.iconFollowsTheme = $0 }
             ))
             .font(DS.rowTitle)
-        } footer: {
-            Text("Minden témához tartozik egy app-ikon, ugyanabból a színpárból. Az iOS ilyenkor felugró értesítést mutat az ikoncseréről — ez a rendszer sajátja, nem lehet elnyomni, ezért van külön kapcsolóban.")
-        }
-    }
-
-    @ViewBuilder
-    private var darkThemesSection: some View {
-        Section {
-            ForEach(AppTheme.darkShelled) { themeRow($0) }
         } header: {
-            Text("Színtéma · sötét részletlapok")
+            Text("Témák")
         } footer: {
-            Text("A vászon világos módban világos, sötétben sötét — az app a rendszert követi. A platform-részletek viszont ezeknél a témáknál mindkét módban sötétek. Minden témának SAJÁT harmónia-sémája van (komplementer, triád, analóg, tetrád), más vezető árnyalattal — ezért nem hasonlítanak egymásra.")
-        }
-    }
-
-    @ViewBuilder
-    private var lightThemesSection: some View {
-        Section {
-            ForEach(AppTheme.lightShelled) { themeRow($0) }
-        } header: {
-            Text("Világos részletlapok")
-        } footer: {
-            Text("Ezeknél világos módban a platform-részletek is világosak — fehér vagy halványan árnyalt alapon, sötét szöveggel. A három akcentus mindenhol azonos érzékelt világosságú, hogy a kártyák egymás mellett kiegyensúlyozottak legyenek, a rajtuk lévő szöveg színe pedig mért kontraszt szerint dől el. A nyereség zöld, a veszteség piros marad minden témában — azok nem akcentusok.")
+            Text("A színpaletta és a fényerő egymástól független. A Rendszer mód a telefon beállítását követi; a másik kettő rögzíti az app megjelenését. Az app-ikon cseréjekor az iOS saját értesítést jelenít meg.")
         }
     }
 
@@ -530,49 +541,152 @@ struct SettingsView: View {
 }
 
 
-extension SettingsView {
-    /// Egy témasor. Két szekció használja, ezért külön — a különbség csak az,
-    /// melyik listából jön a téma.
-    @ViewBuilder func themeRow(_ theme: AppTheme) -> some View {
-        Button { store.setTheme(theme) } label: {
-            HStack(spacing: 12) {
-                ThemeSwatch(theme: theme)
-                Text(theme.name).font(DS.rowTitle)
+struct ThemeGallery: View {
+    let title: String
+    let subtitle: String
+    let themes: [AppTheme]
+    let selectedID: String
+    let isDark: Bool
+    let onSelect: (AppTheme) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(title).font(DS.rowTitle)
                 Spacer()
-                if theme.id == store.themeID {
-                    Image(systemName: "checkmark")
-                        .foregroundStyle(DS.Color.coral)
-                }
+                Text(subtitle)
+                    .font(DS.badge)
+                    .foregroundStyle(DS.Color.inkSoft(0.52))
             }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: 10) {
+                    ForEach(themes) { theme in
+                        ThemeGalleryCard(
+                            theme: theme,
+                            isDark: isDark,
+                            isSelected: theme.id == selectedID
+                        ) {
+                            withAnimation(.easeOut(duration: 0.18)) {
+                                onSelect(theme)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 1)
+            }
+            .scrollClipDisabled()
         }
-        .buttonStyle(.plain)
+        .padding(.vertical, 6)
     }
 }
 
-/// Egy téma előnézete: vászon, héj és a három akcentus.
-struct ThemeSwatch: View {
+/// Apró, de valódi képernyőhangulatot mutató témaelőkép. A sarokban lévő
+/// lágy átmenet az eredeti kártyadesign motívumát viszi tovább.
+struct ThemeGalleryCard: View {
     let theme: AppTheme
+    let isDark: Bool
+    let isSelected: Bool
+    let action: () -> Void
+
+    private var canvas: Color { Color(hex: isDark ? theme.canvasDark : theme.canvasLight) }
+    private var card: Color { Color(hex: isDark ? theme.cardDark : theme.cardLight) }
+    private var ink: Color { Color(hex: isDark ? theme.inkDark : theme.inkLight) }
 
     var body: some View {
-        HStack(spacing: 3) {
-            RoundedRectangle(cornerRadius: 3)
-                .fill(Color(hex: theme.canvasLight))
-                .frame(width: 12, height: 26)
-            RoundedRectangle(cornerRadius: 3)
-                .fill(Color(hex: theme.cardLight))
-                .frame(width: 8, height: 26)
-            RoundedRectangle(cornerRadius: 3)
-                .fill(Color(hex: theme.shellDeepLight))
-                .frame(width: 12, height: 26)
-            VStack(spacing: 2) {
-                ForEach(theme.accents, id: \.self) { hex in
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(Color(hex: hex))
-                        .frame(width: 16, height: 7)
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 8) {
+                ZStack(alignment: .topTrailing) {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(canvas)
+
+                    RadialGradient(
+                        colors: [Color(hex: theme.accents[0]).opacity(0.42), .clear],
+                        center: .topTrailing,
+                        startRadius: 0,
+                        endRadius: 88
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                    VStack(alignment: .leading, spacing: 7) {
+                        HStack {
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(ink.opacity(0.72))
+                                .frame(width: 34, height: 4)
+                            Spacer()
+                            Circle()
+                                .fill(Color(hex: theme.positive))
+                                .frame(width: 5, height: 5)
+                        }
+
+                        HStack(spacing: 7) {
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                .fill(card)
+                                .overlay(alignment: .leading) {
+                                    VStack(alignment: .leading, spacing: 5) {
+                                        RoundedRectangle(cornerRadius: 2)
+                                            .fill(ink.opacity(0.78))
+                                            .frame(width: 32, height: 5)
+                                        RoundedRectangle(cornerRadius: 2)
+                                            .fill(Color(hex: theme.accents[1]))
+                                            .frame(width: 44, height: 4)
+                                    }
+                                    .padding(8)
+                                }
+
+                            ZStack {
+                                Circle().stroke(ink.opacity(0.10), lineWidth: 7)
+                                Circle()
+                                    .trim(from: 0.05, to: 0.70)
+                                    .stroke(Color(hex: theme.accents[0]),
+                                            style: StrokeStyle(lineWidth: 7, lineCap: .round))
+                                    .rotationEffect(.degrees(-90))
+                            }
+                            .frame(width: 31, height: 31)
+                        }
+                        .frame(height: 42)
+
+                        HStack(spacing: 3) {
+                            ForEach(Array(theme.accents.enumerated()), id: \.offset) { _, hex in
+                                Capsule()
+                                    .fill(Color(hex: hex))
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 5)
+                            }
+                        }
+                    }
+                    .padding(10)
+
+                    if isSelected {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(Color(hex: theme.inkOnAccents[0]))
+                            .frame(width: 20, height: 20)
+                            .background(Color(hex: theme.accents[0]), in: Circle())
+                            .padding(7)
+                    }
                 }
+                .frame(width: 148, height: 102)
+
+                Text(theme.name)
+                    .font(DS.meta)
+                    .foregroundStyle(DS.Color.ink)
+                    .lineLimit(1)
             }
         }
-        .overlay(RoundedRectangle(cornerRadius: 4).stroke(DS.Color.inkSoft(0.12)))
+        .buttonStyle(.plain)
+        .padding(5)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(isSelected ? DS.Color.coral.opacity(0.10) : Color.clear)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(isSelected ? DS.Color.coral : DS.Color.inkSoft(0.10),
+                        lineWidth: isSelected ? 1.5 : 1)
+        }
+        .accessibilityLabel("\(theme.name), \(isDark ? "sötét" : "világos") téma")
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 }
 

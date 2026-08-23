@@ -104,6 +104,7 @@ final class PortfolioStore {
     private(set) var expenses: [ExpenseEntry] = []
     private(set) var creditCards: [CreditCardStatus] = []
     private(set) var themeID: String = "pastel"
+    private(set) var appearanceMode: AppAppearanceMode = .stored
     private(set) var scenario: Scenario?
     private(set) var usdRate: Decimal = 0
     private(set) var fxDate: Date?
@@ -1098,6 +1099,12 @@ final class PortfolioStore {
         DS.Color.theme = theme
         if iconFollowsTheme { applyIcon(theme) }
         save()
+    }
+
+    func setAppearanceMode(_ mode: AppAppearanceMode) {
+        guard appearanceMode != mode else { return }
+        appearanceMode = mode
+        mode.persist()
     }
 
     /// `nil` = vissza az alapikonra.

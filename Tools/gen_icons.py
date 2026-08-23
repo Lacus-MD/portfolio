@@ -19,14 +19,15 @@ W = S * SS
 def themes():
     src = open(os.path.join(ROOT, "Shared/Design/AppTheme.swift")).read()
     out = []
-    for tid, body in re.findall(r"static let (\w+) = AppTheme\((.*?)\n    \)", src, re.S):
+    for tid, body in re.findall(r"static let (\w+) = make\((.*?)\n    \)", src, re.S):
         def hexv(key):
             m = re.search(rf"\b{key}: 0x([0-9A-Fa-f]{{6}})", body)
             return int(m.group(1), 16) if m else None
+        accent = re.search(r"\baccents:\s*\[0x([0-9A-Fa-f]{6})", body)
         out.append({
             "id": tid,
-            "deep": hexv("shellDeep"), "shell": hexv("shell"),
-            "accent": hexv("accentWarm"), "second": hexv("accentCool"),
+            "deep": hexv("canvasDark"), "shell": hexv("cardDark"),
+            "accent": int(accent.group(1), 16) if accent else None,
         })
     return out
 

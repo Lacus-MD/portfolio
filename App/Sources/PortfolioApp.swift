@@ -34,6 +34,7 @@ struct PortfolioApp: App {
             RootTabView()
                 .environment(store)
                 .environment(banking)
+                .preferredColorScheme(store.appearanceMode.colorScheme)
                 // Fájlokból / Mailből „Megnyitás — Portfólió". Az iOS a
                 // fájlt bemásolja az app Documents/Inbox-ába (nincs
                 // open-in-place), ezért itt csak a saját postaládánkba
