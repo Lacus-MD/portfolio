@@ -42,7 +42,7 @@ sikeres, a telefonos telepítés sikerült, és a commit felkerült GitHubra.
 
 | Build | Munkacsomag | Állapot | Commit/tag |
 |---|---|---|---|
-| 21 | Tesztalapok, warningok, CI | nincs elkezdve | — |
+| 21 | Tesztalapok, warningok, CI | blokkolt: a fizikai iPhone jelenleg unavailable/locked | cfa15f2 · 128cb0e · d6ed5ae |
 | 22 | Pénzügyi számítások és importok | nincs elkezdve | — |
 | 23 | Adatmentés, migráció, titkosítás | nincs elkezdve | — |
 | 24 | Értesítések és háttérfrissítés | nincs elkezdve | — |
@@ -140,7 +140,7 @@ Jelenleg hiányzik:
 
 A `project.yml` fájlban hozz létre `PortfolioTests` unit test targetet:
 
-- típus: `bundle.unit-testing`;
+- típus: `bundle.unit-test`;
 - platform: iOS;
 - deployment target: 26.0;
 - forrás: `PortfolioTests`;
@@ -208,6 +208,13 @@ self-hosted Mac runt vagy kompatibilis, alacsonyabb szintű tesztlépést.
 - Nincs Swift compiler warning.
 - A GitHub minden pushnál ellenőriz.
 - Build 21 települt a fizikai iPhone-ra.
+
+Ellenőrzési eredmény: a `PortfolioTests` target iPhoneOS SDK-val lefordult, a
+Release build sikeres és a beépített app bundle `CFBundleVersion` értéke 21.
+Az iPhone CoreDevice állapota `unavailable`, az Xcode futtatás pedig feloldást
+kért, ezért a fizikai teszt és telepítés a készülék elérhetővé tételéig
+blokkolt. A `build-21` tag szándékosan nem készült el, mert azt csak sikeres
+telefonos ellenőrzés után szabad létrehozni.
 
 ### 6.5 Javasolt commitok
 
