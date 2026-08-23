@@ -43,7 +43,7 @@ sikeres, a telefonos telepítés sikerült, és a commit felkerült GitHubra.
 | Build | Munkacsomag | Állapot | Commit/tag |
 |---|---|---|---|
 | 21 | Tesztalapok, warningok, CI | blokkolt: a fizikai iPhone jelenleg unavailable/locked | cfa15f2 · 128cb0e · d6ed5ae |
-| 22 | Pénzügyi számítások és importok | nincs elkezdve | — |
+| 22 | Pénzügyi számítások és importok | ellenőrzés alatt | da29840 · d11092f · 2e022b2 · d4a2475 |
 | 23 | Adatmentés, migráció, titkosítás | nincs elkezdve | — |
 | 24 | Értesítések és háttérfrissítés | nincs elkezdve | — |
 | 25 | Teljesítmény és görgetés | nincs elkezdve | — |
@@ -293,6 +293,13 @@ után ne változzon:
 - OTP folyószámla mellett nem jelenhet meg hamis `+51,43%`.
 - App és widget azonos nettó vagyont mutat.
 - Build 22 települt a fizikai iPhone-ra.
+
+Ellenőrzési eredmény: a pénzügyi matek tesztmátrix, az anonymizált importer
+fixture-ek és a BOM/CRLF, lokalizált szám- és idézőjeles delimiter-kezelés
+elkészült. A `PortfolioTests` target iPhoneOS SDK-val lefordult, a Release
+artifact `CFBundleVersion` értéke 22. A tesztek futtatása és a telefonos
+telepítés az iPhone `unavailable/locked` állapota, valamint a helyi
+CoreSimulator szolgáltatás hibája miatt még nem zárható le.
 
 ### 7.5 Javasolt commitok
 
