@@ -43,7 +43,7 @@ sikeres, a telefonos telepítés sikerült, és a commit felkerült GitHubra.
 | Build | Munkacsomag | Állapot | Commit/tag |
 |---|---|---|---|
 | 21 | Tesztalapok, warningok, CI | blokkolt: a fizikai iPhone jelenleg unavailable/locked | cfa15f2 · 128cb0e · d6ed5ae |
-| 22 | Pénzügyi számítások és importok | ellenőrzés alatt | da29840 · d11092f · 2e022b2 · d4a2475 |
+| 22 | Pénzügyi számítások és importok | ellenőrzés alatt | da29840 · d11092f · 2e022b2 · d4a2475 · bfe2fe7 |
 | 23 | Adatmentés, migráció, titkosítás | nincs elkezdve | — |
 | 24 | Értesítések és háttérfrissítés | nincs elkezdve | — |
 | 25 | Teljesítmény és görgetés | nincs elkezdve | — |
