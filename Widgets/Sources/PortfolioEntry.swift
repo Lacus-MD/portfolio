@@ -12,8 +12,6 @@ struct PortfolioSlice: Identifiable {
     /// az kód, nem név: a widgetről ránézésre nem lehetett megmondani, melyik
     /// számláról van szó. Ami nem fér ki, azt a nézet kicsinyíti.
     let name: String
-    /// A platform rövid jelölése a widget színezett számlaikonjához.
-    let monogram: String
     /// A platform akcentusának sorszáma. Enélkül a widgeten minden sáv
     /// ugyanaz a szín volt, és a sávok nem jelentettek semmit.
     let accentIndex: Int
@@ -99,19 +97,19 @@ struct PortfolioEntry: TimelineEntry {
         e.grossAssetsHUF = 2_039_157
         e.liabilitiesHUF = 650_867
         e.slices = [
-            .init(id: "tbsz-2026", name: "TBSZ 2026 · VWCE", monogram: "26",
+            .init(id: "tbsz-2026", name: "TBSZ 2026 · VWCE",
                   accentIndex: 0, kind: .brokerage,
                   weight: 0.372, valueHUF: 1_000_657, gainPercent: 0.49),
-            .init(id: "revolut-savings", name: "Revolut Savings", monogram: "RS",
+            .init(id: "revolut-savings", name: "Revolut Savings",
                   accentIndex: 2, kind: .savings,
                   weight: 0.149, valueHUF: 400_733, gainPercent: 0.07),
-            .init(id: "otp-current", name: "OTP Folyószámla", monogram: "O",
+            .init(id: "otp-current", name: "OTP Folyószámla",
                   accentIndex: 1, kind: .current,
                   weight: 0.235, valueHUF: 631_729, gainPercent: nil),
-            .init(id: "revolut-current", name: "Revolut", monogram: "R",
+            .init(id: "revolut-current", name: "Revolut",
                   accentIndex: 3, kind: .current,
                   weight: 0.002, valueHUF: 6_038, gainPercent: nil),
-            .init(id: "otp-credit", name: "OTP Hitelkártya", monogram: "O",
+            .init(id: "otp-credit", name: "OTP Hitelkártya",
                   accentIndex: 4, kind: .credit,
                   weight: 0.242, valueHUF: -650_867, gainPercent: nil),
         ]
@@ -208,7 +206,6 @@ struct PortfolioEntry: TimelineEntry {
             return PortfolioSlice(
                 id: platform.id,
                 name: platform.name,
-                monogram: platform.monogram,
                 accentIndex: platform.accent.index,
                 kind: platform.kind,
                 weight: totalMagnitude > 0 ? (abs(value) / totalMagnitude).doubleValue : 0,

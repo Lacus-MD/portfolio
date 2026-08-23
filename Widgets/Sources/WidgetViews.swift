@@ -235,11 +235,6 @@ private struct WidgetPalette {
         guard !theme.accents.isEmpty else { return Color(hex: 0xD09ECB) }
         return Color(hex: theme.accents[index % theme.accents.count])
     }
-
-    func inkOnAccent(_ index: Int) -> Color {
-        guard !theme.inkOnAccents.isEmpty else { return ink }
-        return Color(hex: theme.inkOnAccents[index % theme.inkOnAccents.count])
-    }
 }
 
 /// Pénzügyi pillanatkép: a nettó vagyon után azonnal a teljes számlaeloszlást
@@ -411,18 +406,11 @@ struct BreakdownWidgetView: View {
     }
 
     private func accountRow(_ slice: PortfolioSlice, compact: Bool) -> some View {
-        HStack(spacing: compact ? 6 : 8) {
-            ZStack {
-                RoundedRectangle(cornerRadius: compact ? 7 : 9, style: .continuous)
-                    .fill(palette.accent(slice.accentIndex))
-                Text(slice.monogram)
-                    .font(.system(size: compact ? 7 : 8.5, weight: .bold, design: .rounded))
-                    .foregroundStyle(palette.inkOnAccent(slice.accentIndex))
-                    .minimumScaleFactor(0.65)
-                    .lineLimit(1)
-                    .padding(3)
-            }
-            .frame(width: compact ? 22 : 29, height: compact ? 22 : 29)
+        HStack(spacing: compact ? 5 : 6) {
+            RoundedRectangle(cornerRadius: compact ? 2.5 : 3.5, style: .continuous)
+                .fill(palette.accent(slice.accentIndex))
+                .frame(width: compact ? 8 : 11, height: compact ? 8 : 11)
+                .accessibilityHidden(true)
 
             if compact {
                 VStack(alignment: .leading, spacing: 1) {
@@ -492,9 +480,10 @@ struct BreakdownWidgetView: View {
            let first = slice.name.components(separatedBy: "·").first {
             return first.trimmingCharacters(in: .whitespacesAndNewlines)
         }
-        if slice.kind == .current,
-           slice.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "revolut" {
-            return "Revolut folyószámla"
+        if slice.kind == .current {
+            let normalized = slice.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if normalized.contains("revolut") { return "Revolut folyószámla" }
+            if normalized.contains("otp") { return "OTP folyószámla" }
         }
         return slice.name
     }
