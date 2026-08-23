@@ -6,7 +6,8 @@ run without bank credentials, signing secrets, or a connected phone.
 - [x] XcodeGen regenerated `Portfolio.xcodeproj` from `project.yml`.
 - [x] Unit-test target compiles for iPhoneOS without signing.
 - [x] All app, widget, share-extension, watch app, and watch widget targets
-  compile in the signed Release configuration.
+  compile in the Release configuration with signing disabled for this
+  no-device pass.
 - [x] Build number is read from the generated app bundle Info.plist.
 - [x] `git diff --check` passes.
 - [x] Importer fixtures contain no personal or bank data.
