@@ -111,11 +111,15 @@ struct PortfolioApp: App {
         BGTaskScheduler.shared.register(forTaskWithIdentifier: refreshTaskID,
                                         using: nil) { task in
             scheduleBackgroundRefresh()
+            let completion = BackgroundRefreshCompletion(task: task)
             let work = Task { @MainActor in
+                defer { completion.finish(success: !Task.isCancelled) }
+                guard !Task.isCancelled else { return }
                 Inbox.collectFromCloud()
                 WatchedFolders.collect()
                 let payload = PortfolioFile.load()
                 await PaymentReminder.schedule(for: payload.creditCards.first)
+                try? Task.checkCancellation()
                 await Reminders.Statements.schedule()
 
                 // A bankkapcsolat frissítése. A kulcs `AfterFirstUnlock`
@@ -123,15 +127,14 @@ struct PortfolioApp: App {
                 // az első feloldás után. Zárolt telefonon frissen indított
                 // eszközön kimarad, és az nem baj: legközelebb megy.
                 let pair = live ?? (PortfolioStore(), EnableBankingService())
-                // A napi háttérlehetőség a piaci mozgásokat is ellenőrzi.
-                // Az iOS időpontot nem garantál, de ehhez nem kell nyitva
-                // hagyni az appot.
                 await pair.store.refresh()
+                try? Task.checkCancellation()
                 await pair.banking.syncIfStale(store: pair.store)
-
-                task.setTaskCompleted(success: true)
             }
-            task.expirationHandler = { work.cancel() }
+            task.expirationHandler = {
+                work.cancel()
+                completion.finish(success: false)
+            }
         }
     }
 

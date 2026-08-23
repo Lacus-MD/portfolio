@@ -202,13 +202,18 @@ enum ActivityNotifications {
         static func notify(_ moves: [Move]) async {
             guard isEnabled, await hasAuthorization() else { return }
             let day = ConstituentWatcher.dayKey(Date())
-            let significant = moves.filter { abs($0.changePct) >= thresholdPct }
-                .sorted { abs($0.changePct) > abs($1.changePct) }
-                .prefix(6)
+            let significant = NotificationRules.marketEvents(
+                moves.map {
+                    NotificationRules.MarketInput(id: $0.id, name: $0.name,
+                                                   symbol: $0.symbol, changePct: $0.changePct,
+                                                   price: $0.price, currency: $0.currency)
+                }, thresholdPct: thresholdPct, limit: 6
+            )
 
-            for move in significant {
+            for event in significant {
                 guard !Task.isCancelled else { return }
-                let direction = move.changePct >= 0 ? "up" : "down"
+                let move = event.input
+                let direction = event.direction.rawValue
                 let key = "\(day)|\(safeKey(move.id))|\(direction)"
                 guard shouldSend(key: key, storageKey: sentKey) else { continue }
 
@@ -251,12 +256,16 @@ enum ActivityNotifications {
 
         static func notify(_ movements: [Movement]) async {
             guard isEnabled, await hasAuthorization() else { return }
-            let significant = movements.filter { abs($0.amountHUF) >= thresholdHUF }
-                .sorted { abs($0.amountHUF) > abs($1.amountHUF) }
-                .prefix(8)
+            let significant = NotificationRules.bankEvents(
+                movements.map {
+                    NotificationRules.BankInput(id: $0.id, account: $0.account,
+                                                merchant: $0.merchant, amountHUF: $0.amountHUF)
+                }, thresholdHUF: thresholdHUF, limit: 8
+            )
 
-            for movement in significant {
+            for event in significant {
                 guard !Task.isCancelled else { return }
+                let movement = event.input
                 let key = safeKey(movement.id)
                 guard shouldSend(key: key, storageKey: sentKey) else { continue }
 
