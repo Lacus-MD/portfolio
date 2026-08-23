@@ -268,6 +268,11 @@ struct AppTheme: Identifiable, Codable, Hashable {
         return (brighter + 0.05) / (darker + 0.05)
     }
 
+    /// WCAG-style contrast ratio exposed for deterministic theme audits.
+    static func contrastRatio(_ first: UInt32, _ second: UInt32) -> Double {
+        contrast(first, second)
+    }
+
     private static func luminance(_ value: UInt32) -> Double {
         let components = [value >> 16, value >> 8, value].map {
             linear(Double($0 & 0xFF) / 255)
