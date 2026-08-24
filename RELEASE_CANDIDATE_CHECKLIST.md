@@ -1,6 +1,6 @@
-# Portfolio 1.0 Release Candidate checklist
+# Portfolio 1.0 Release Candidate checklist — Build 28
 
-This checklist is the no-device verification path for Build 27. It is safe to
+This checklist is the no-device verification path for Build 28. It is safe to
 run without bank credentials, signing secrets, or a connected phone.
 
 - [x] XcodeGen regenerated `Portfolio.xcodeproj` from `project.yml`.
