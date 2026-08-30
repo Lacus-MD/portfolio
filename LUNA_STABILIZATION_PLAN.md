@@ -50,7 +50,7 @@ sikeres, a telefonos telepítés sikerült, és a commit felkerült GitHubra.
 | 26 | Beállítások és akadálymentesség | elkészült (telefonos ellenőrzés halasztva) | 02d1377 |
 | 27 | TestFlight Release Candidate | elkészült (telefonos ellenőrzés halasztva) | e01c963 |
 | 28 | Hosszú pull-down banki frissítés | elkészült (telefonos ellenőrzés halasztva) | 24848a9 |
-| 29 | iCloud szinkronizálás platformok és eszközök között | elkészült (telefonos ellenőrzés halasztva) | folyamatban |
+| 29 | iCloud szinkronizálás platformok és eszközök között | elkészült (telefonos ellenőrzés halasztva) | 24d1f93 |
 
 Engedélyezett állapotok:
 
