@@ -438,7 +438,11 @@ final class EnableBankingService {
 
     private func otpBank(in banks: [EBASPSP]) -> EBASPSP? {
         banks.first {
-            let name = $0.name.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
+            // A folding kisbetűsít, ezért nagybetűsítünk utána — ugyanaz a
+            // minta, mint az `ExpenseCategorizer.normalize`. Enélkül a
+            // `contains("OTP")` soha nem talált.
+            let name = $0.name.folding(options: [.diacriticInsensitive, .caseInsensitive],
+                                       locale: .current).uppercased()
             return name.contains("OTP")
         }
     }

@@ -26,7 +26,13 @@ final class CloudWatcher {
             "csv", "pdf", "txt", "xml"
         ].map { ext in
             NSPredicate(format: "%K ENDSWITH[c] %@", NSMetadataItemFSNameKey, ".\(ext)")
-        })
+        } + [
+            // A remote device writes the synchronised snapshot as JSON. It
+            // is not an import statement, but it must wake the store so the
+            // new portfolio is pulled while the app is in the foreground.
+            NSPredicate(format: "%K == %@", NSMetadataItemFSNameKey,
+                        PortfolioCloudSync.fileName)
+        ])
 
         for name in [NSNotification.Name.NSMetadataQueryDidFinishGathering,
                      .NSMetadataQueryDidUpdate] {

@@ -92,6 +92,9 @@ struct PortfolioApp: App {
                     }
                 }
             case .background:
+                // A 300 ms-os összevont mentés ablakában megszakított app
+                // elveszthetné az utolsó műveletsort — itt kiürítjük.
+                store.flushPendingSave()
                 Self.scheduleBackgroundRefresh()
             default:
                 break
@@ -115,18 +118,19 @@ struct PortfolioApp: App {
             let work = Task { @MainActor in
                 defer { completion.finish(success: !Task.isCancelled) }
                 guard !Task.isCancelled else { return }
-                Inbox.collectFromCloud()
-                WatchedFolders.collect()
-                let payload = PortfolioFile.load()
-                await PaymentReminder.schedule(for: payload.creditCards.first)
-                try? Task.checkCancellation()
-                await Reminders.Statements.schedule()
-
                 // A bankkapcsolat frissítése. A kulcs `AfterFirstUnlock`
                 // hozzáférésű, tehát a Keychainból háttérben is olvasható —
                 // az első feloldás után. Zárolt telefonon frissen indított
                 // eszközön kimarad, és az nem baj: legközelebb megy.
                 let pair = live ?? (PortfolioStore(), EnableBankingService())
+                // `startup()` húzza be az új iCloud-revíziót, a kivonatokat és
+                // csak ezután írja vissza a lokális App Group állapotot. Így a
+                // háttérben felébredő új készülék sem tud üres payloadot
+                // közzétenni a másik eszköz helyett.
+                await pair.store.startup()
+                await PaymentReminder.schedule(for: pair.store.creditCards.first)
+                try? Task.checkCancellation()
+                await Reminders.Statements.schedule()
                 await pair.store.refresh()
                 try? Task.checkCancellation()
                 await pair.banking.syncIfStale(store: pair.store)

@@ -191,12 +191,26 @@ struct IndexedChart: View {
         let id: String
         let values: [Double]
         let color: Color
+        /// A szín hexben, EGYSZER visszafejtve, a sorozat építésekor.
+        /// A kiolvasó sor (`ScrubReading`) hexet vár az összehasonlításhoz;
+        /// húzás közben soronként UIColor-ra hidalni képkockánkénti munka volt.
+        let colorHex: UInt32
         /// Vízszintes helyek 0…1 között — a NAPOK szerint, nem sorszám
         /// szerint. Enélkül a különböző hosszúságú sorozatok egymás fölé
         /// csúsznának időben helytelenül.
         var xs: [Double]? = nil
         /// Rövid név a dátumsáv kiolvasásához (a platform monogramja).
         var label: String = ""
+
+        init(id: String, values: [Double], color: Color,
+             xs: [Double]? = nil, label: String = "") {
+            self.id = id
+            self.values = values
+            self.color = color
+            self.colorHex = color.hexValue
+            self.xs = xs
+            self.label = label
+        }
     }
     let series: [Series]
     /// A vezetővonal színe — a sötét héjon és a világos vásznon más kell.
@@ -210,20 +224,36 @@ struct IndexedChart: View {
     /// arányos a forintokkal — ez tudatos torzítás, de csak akkor
     /// elfogadható, ha ki lehet kapcsolni.
     var forcedScale: CurveBuilder.Scale? = nil
-    /// KÍVÜLRŐL vezérelt sáv-állapot. Azért kell, hogy a grafikonon KÍVÜLRE
-    /// koppintva is el lehessen tüntetni: az ottani koppintás soha nem jut
-    /// el ide, tehát a befogadó nézetnek kell tudnia törölni.
-    var externalScrub: Binding<Double?>? = nil
+    /// KÍVÜLRŐL érkező „tüntesd el a sávot” jelzés: a befogadó növeli,
+    /// amikor a görbén KÍVÜLRE koppintanak — az a koppintás ide nem jut el.
+    /// A sáv értéke viszont ITT él, saját állapotként: húzás közben csak ez
+    /// a nézet épül újra, nem a teljes befogadó képernyő. (Korábban minden
+    /// mozdulat a HomeView állapotába írt, és képkockánként újraépült az
+    /// egész kezdőoldal — ettől akadt a görgetés.)
+    var dismissSignal: Int = 0
+    /// Ki-be váltáskor szól a befogadónak, hogy kint van-e a sáv — ebből
+    /// tudja, mikor kell a kívülre-koppintást figyelnie. Húzás közben nem
+    /// hívódik, csak megjelenéskor és eltűnéskor.
+    var onScrubActive: ((Bool) -> Void)? = nil
 
-    @State private var localScrub: Double?
-    private var scrub: Binding<Double?> { externalScrub ?? $localScrub }
+    @State private var scrub: Double?
 
     var body: some View {
         GeometryReader { geo in
             // Közös skála: csak így összehasonlíthatók a görbék.
-            let all = series.flatMap(\.values)
-            let low = all.min() ?? 0, high = all.max() ?? 1
-            let scale = forcedScale ?? CurveBuilder.suggestedScale(all)
+            // A szélsőértékeket, a skálát és a simított sorozatokat EGYSZER
+            // számoljuk: korábban a Canvas és a végpont-overlay külön-külön
+            // építette fel ugyanazokat, minden menetben kétszer.
+            let lowest = series.flatMap(\.values).min()
+            let highest = series.flatMap(\.values).max()
+            let low = lowest ?? 0, high = highest ?? 1
+            let scale = forcedScale ?? CurveBuilder.suggestedScale(low: lowest, high: highest)
+            let drawn = series.map { item in
+                (series: item,
+                 smoothed: CurveBuilder.smoothed(
+                    item.values,
+                    window: CurveBuilder.suggestedWindow(item.values.count)))
+            }
             // Egyetlen aszinkron rajzfelület: a korábbi, platformonként
             // késleltetett Path-animációk 2–4 másodpercig külön rétegeket
             // kompozitáltak. Ettől a görbe darabonként töltött be, és közben
@@ -243,18 +273,14 @@ struct IndexedChart: View {
                         )
                     }
 
-                    for (index, item) in series.enumerated() {
-                        let smoothed = CurveBuilder.smoothed(
-                            item.values,
-                            window: CurveBuilder.suggestedWindow(item.values.count)
-                        )
+                    for (index, entry) in drawn.enumerated() {
                         let path = CurveBuilder.path(
-                            smoothed, xs: item.xs, in: size,
+                            entry.smoothed, xs: entry.series.xs, in: size,
                             low: low, high: high, scale: scale
                         )
                         context.stroke(
                             path,
-                            with: .color(item.color),
+                            with: .color(entry.series.color),
                             style: .init(lineWidth: index == 0 ? 3 : 2.6,
                                          lineCap: .round)
                         )
@@ -266,29 +292,27 @@ struct IndexedChart: View {
                 // kívülre került. A pontok külön SwiftUI-overlayként túlnyúlhatnak
                 // a rajzfelületen, miközben a nehéz görbék maradnak az
                 // aszinkron Canvasban.
-                ForEach(series) { item in
-                    let smoothed = CurveBuilder.smoothed(
-                        item.values,
-                        window: CurveBuilder.suggestedWindow(item.values.count)
-                    )
+                ForEach(drawn, id: \.series.id) { entry in
                     if let last = CurveBuilder.points(
-                        smoothed, xs: item.xs, in: geo.size,
+                        entry.smoothed, xs: entry.series.xs, in: geo.size,
                         low: low, high: high, scale: scale
                     ).last {
-                        PulsingDot(color: item.color, size: 9)
+                        PulsingDot(color: entry.series.color, size: 9)
                             .position(last)
                             .allowsHitTesting(false)
                     }
                 }
 
-                if let value = scrub.wrappedValue {
+                if let value = scrub {
                     ScrubBand(fraction: value, reading: reading(at: value),
                               width: geo.size.width, height: geo.size.height,
                               tint: guideColor.opacity(1))
                 }
             }
             .contentShape(.rect)
-            .scrubbable(width: geo.size.width, fraction: scrub)
+            .scrubbable(width: geo.size.width, fraction: $scrub)
+            .onChange(of: dismissSignal) { scrub = nil }
+            .onChange(of: scrub == nil) { _, hidden in onScrubActive?(!hidden) }
         }
     }
 }
@@ -320,7 +344,7 @@ extension IndexedChart {
                let low = xs.first, let high = xs.last,
                fraction < low - 0.02 || fraction > high + 0.02 { return nil }
             return ScrubReading.Row(id: item.id, label: item.label,
-                                    colorHex: item.color.hexValue,
+                                    colorHex: item.colorHex,
                                     text: format(item.values[index]))
         }
         return ScrubReading(date: date, rows: rows)
@@ -354,7 +378,12 @@ enum CurveBuilder {
     enum Scale { case linear, logarithmic }
 
     static func suggestedScale(_ values: [Double]) -> Scale {
-        guard let low = values.min(), let high = values.max(), low > 0 else { return .linear }
+        suggestedScale(low: values.min(), high: values.max())
+    }
+
+    /// Kész szélsőértékekből — így a hívó nem járja be még egyszer a sorozatot.
+    static func suggestedScale(low: Double?, high: Double?) -> Scale {
+        guard let low, let high, low > 0 else { return .linear }
         return high / low > 4 ? .logarithmic : .linear
     }
 

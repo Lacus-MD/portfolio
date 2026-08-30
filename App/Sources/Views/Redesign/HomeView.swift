@@ -2,10 +2,14 @@ import SwiftUI
 
 /// 3a — Kezdőképernyő: teljes vagyon és a platformok egy pillantásra.
 struct HomeView: View {
-    /// A részletező sáv állapota. Azért ITT él és nem a grafikonban, hogy a
-    /// GÖRBÉN KÍVÜLRE koppintva is el lehessen tüntetni — az oda érkező
-    /// koppintás a grafikonhoz soha nem jut el.
-    @State private var chartScrub: Double?
+    /// A részletező sáv értéke a GRAFIKONBAN él (lásd `IndexedChart`):
+    /// húzás közben így csak a görbe épül újra, nem a teljes kezdőoldal —
+    /// korábban minden mozdulat ide írt, és képkockánként újraépült minden.
+    /// Ide két apróság tartozik: látszik-e éppen a sáv (ettől függ a
+    /// kívülre-koppintás figyelése), és a számláló, aminek növelése a sáv
+    /// eltüntetését kéri — a görbén kívüli koppintás oda sosem jut el.
+    @State private var scrubVisible = false
+    @State private var scrubDismiss = 0
     /// A görbe kerete. SZÁNDÉKOSAN nem `@State` értéktípus: görgetés közben
     /// minden képkockában változik, és állapotként minden változás
     /// újraépítette volna az egész nézetet — ettől akadt a görgetés.
@@ -30,10 +34,6 @@ struct HomeView: View {
     @State private var indexed = false
     /// A hosszú, lefelé húzott mozdulat külön művelet: a rövid húzás marad
     /// natív görgetés, a kitartott húzás pedig előkészíti a banki frissítést.
-    @State private var bankingPullDistance: CGFloat = 0
-    @State private var bankingPulling = false
-    @State private var bankingPullArmed = false
-    @State private var homeIsAtTop = true
 
     var body: some View {
         NavigationStack {
@@ -83,26 +83,26 @@ struct HomeView: View {
                     SpatialTapGesture(coordinateSpace: .named("home"))
                         .onEnded { value in
                             let frame = chartFrame.rect
-                            guard chartScrub != nil, frame != .zero,
+                            guard scrubVisible, frame != .zero,
                                   !frame.insetBy(dx: -8, dy: -8).contains(value.location)
                             else { return }
-                            chartScrub = nil
+                            scrubDismiss += 1
                         },
                     // Csak amíg van kint sáv. Egy folyamatosan aktív
                     // koppintásfigyelő a görgetés felismerésébe is beleszól.
-                    isEnabled: chartScrub != nil
+                    isEnabled: scrubVisible
                 )
-                // A rövid lefelé húzás a ScrollView-é marad. Csak a tetején,
-                // függőleges irányban figyelünk; így a kártyák és a diagram
-                // vízszintes gesztusai nem kapják meg ezt a műveletet.
-                .simultaneousGesture(bankingPullGesture)
             }
             .coordinateSpace(name: "home")
-            .onScrollGeometryChange(for: Bool.self) { geometry in
-                geometry.contentOffset.y + geometry.contentInsets.top <= 0.5
-            } action: { _, atTop in
-                homeIsAtTop = atTop
-                if !atTop { resetBankingPull() }
+            // Húzás-frissítés: forduló nyíl a húzás alatt, elengedésre indul,
+            // az oldal visszaugrik, és fent témaszínű csík fut a végéig.
+            // A banki ág a 90 napos ablakban marad, tehát SMS-t nem vált ki.
+            .pullRefresh(tint: DS.Color.coral) {
+                async let quotes: Void = store.refresh(force: true)
+                if banking.isConfigured && banking.isConnected {
+                    await banking.sync(store: store)
+                }
+                await quotes
             }
             .background(DS.Color.canvas)
             // A 58 pt-es felső padding NYELI EL a státuszsáv helyét (handoff).
@@ -120,117 +120,8 @@ struct HomeView: View {
             // `.task` sosem futna le, mert a nézet csak az adat megérkezésekor
             // jön létre — pont az adatra várnánk önmagától.
             .task { await loadMovers() }
-            .overlay(alignment: .top) { bankingPullIndicator }
         }
         .task { await store.startup() }
-    }
-
-    // MARK: - Hosszú pull-down: Enable Banking
-
-    private var bankingPullGesture: some Gesture {
-        let drag = DragGesture(minimumDistance: 8, coordinateSpace: .local)
-            .onChanged { value in
-                guard homeIsAtTop, !banking.isWorking else { return }
-                let distance = value.translation.height
-                let horizontal = abs(value.translation.width)
-                guard distance > 0, horizontal <= max(32, distance * 0.75) else {
-                    return
-                }
-                bankingPulling = true
-                bankingPullDistance = min(distance, 150)
-            }
-            .onEnded { _ in
-                let shouldRefresh = bankingPullArmed && canStartBankingRefresh
-                resetBankingPull()
-                guard shouldRefresh else { return }
-                Task { await banking.sync(store: store) }
-            }
-
-        let longPress = LongPressGesture(minimumDuration: 0.65,
-                                         maximumDistance: 140)
-            .onEnded { _ in
-                guard bankingPulling, bankingPullDistance >= 64,
-                      canStartBankingRefresh else { return }
-                withAnimation(.snappy(duration: 0.2)) {
-                    bankingPullArmed = true
-                }
-            }
-
-        return drag.simultaneously(with: longPress)
-    }
-
-    private var canStartBankingRefresh: Bool {
-        banking.isConfigured && banking.isConnected && !banking.isWorking
-    }
-
-    private func resetBankingPull() {
-        bankingPulling = false
-        bankingPullDistance = 0
-        bankingPullArmed = false
-    }
-
-    @ViewBuilder private var bankingPullIndicator: some View {
-        if bankingPulling || bankingPullArmed || banking.isWorking {
-            let progress = banking.isWorking ? 1 : min(max(bankingPullDistance / 96, 0), 1)
-            HStack(spacing: 10) {
-                Image(systemName: banking.isWorking
-                      ? "arrow.triangle.2.circlepath"
-                      : "building.columns.fill")
-                    .font(.system(size: 14, weight: .semibold))
-
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(banking.isWorking
-                         ? "Banki adatok frissítése…"
-                         : bankingPullArmed
-                           ? "Engedd el a banki frissítéshez"
-                           : canStartBankingRefresh
-                             ? "Tartsd lent a banki frissítéshez"
-                             : "Enable Banking nincs összekötve")
-                        .font(DS.font(12, .medium))
-                    if !banking.isWorking && canStartBankingRefresh {
-                        Text(bankingPullArmed ? "Számlák és tranzakciók" : "Húzd le még egy kicsit")
-                            .font(DS.font(10.5, .regular))
-                            .foregroundStyle(DS.Color.inkSoft(0.55))
-                    }
-                }
-
-                Spacer(minLength: 4)
-
-                if banking.isWorking {
-                    ProgressView()
-                        .tint(DS.Color.ink)
-                } else {
-                    Toggle("", isOn: .constant(bankingPullArmed))
-                        .labelsHidden()
-                        .tint(DS.Color.mint)
-                        .allowsHitTesting(false)
-                }
-            }
-            .foregroundStyle(DS.Color.ink)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 9)
-            .frame(maxWidth: 360)
-            .pastelCardBackground(in: Capsule(), opacity: 0.96)
-            .overlay {
-                Capsule()
-                    .trim(from: 0, to: bankingPullArmed ? 1 : progress)
-                    .stroke(DS.Color.mint.opacity(0.65), style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                    .padding(1)
-                    .allowsHitTesting(false)
-            }
-            .opacity(min(1, max(0.15, progress + 0.15)))
-            .scaleEffect(bankingPullArmed ? 1 : 0.96 + progress * 0.04)
-            .animation(.snappy(duration: 0.18), value: bankingPullArmed)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("Enable Banking banki frissítés")
-            .accessibilityValue(banking.isWorking
-                                ? "Folyamatban"
-                                : bankingPullArmed ? "Elengedésre kész" : "Előkészítés")
-            .accessibilityHint("Húzd le és tartsd lent, majd engedd el a frissítés indításához")
-            .padding(.horizontal, 20)
-            .padding(.top, 42)
-        }
     }
 
     // MARK: - Fejléc
@@ -302,19 +193,28 @@ struct HomeView: View {
     /// elmozdulás a kérdés. Itt az abszolút vagyon, mert a kezdőképernyő
     /// arra válaszol, hogy „mennyim van és miből".
     @ViewBuilder private var combinedChart: some View {
-        let series = platformSeries
+        // Egy menet — egy számítás. A szűkített mérés-sor és a sorozatok
+        // korábban számított tulajdonságok voltak, és a body minden
+        // hivatkozásnál (görbe, tengelyfelirat, lefedettség) újraszámolta
+        // őket, menetenként ötször.
+        let ranged = rangedSnapshots
+        let series = platformSeries(ranged)
+        // A skála-javaslat is egyszer fut; az `IndexedChart` készen kapja,
+        // így bent nem járja be még egyszer az összes értéket.
+        let autoScale = CurveBuilder.suggestedScale(series.flatMap(\.values))
         if series.isEmpty {
             // Némán eltűnni a legrosszabb: a felhasználó azt hiszi, elromlott.
             chartEmptyState
         } else {
             VStack(alignment: .leading, spacing: 8) {
                 IndexedChart(series: series, guideColor: DS.Color.inkSoft(0.14),
-                             axisStart: rangedSnapshots.first?.date,
-                             axisEnd: rangedSnapshots.last?.date,
+                             axisStart: ranged.first?.date,
+                             axisEnd: ranged.last?.date,
                              format: indexed ? { Fmt.percentPlain($0 - 100) }
                                              : { Fmt.huf(Decimal($0)) },
-                             forcedScale: proportionalChart ? .linear : nil,
-                             externalScrub: $chartScrub)
+                             forcedScale: proportionalChart ? .linear : autoScale,
+                             dismissSignal: scrubDismiss,
+                             onScrubActive: { scrubVisible = $0 })
                     .frame(height: 120)
                     .background {
                         GeometryReader { proxy in
@@ -354,7 +254,7 @@ struct HomeView: View {
                     // Néma torzítás nem lehet — és ha már kiírjuk, legyen is
                     // mit tenni ellene. Koppintásra átvált arányos skálára,
                     // ahol a vonalak magassága tényleg a forintokat követi.
-                    if CurveBuilder.suggestedScale(series.flatMap(\.values)) == .logarithmic {
+                    if autoScale == .logarithmic {
                         Button {
                             withAnimation(.snappy(duration: 0.25)) { proportionalChart.toggle() }
                         } label: {
@@ -372,16 +272,16 @@ struct HomeView: View {
                 }
                 // Meddig ér vissza a görbe és hány mérésből áll. Enélkül a
                 // vonal hossza semmit nem mond az időről.
-                chartAxisCaption
-                coverageNote
+                chartAxisCaption(ranged)
+                coverageNote(ranged)
             }
             .padding(.vertical, 2)
         }
     }
 
-    /// A görbe időtengelye szavakban.
-    @ViewBuilder private var chartAxisCaption: some View {
-        let ordered = rangedSnapshots
+    /// A görbe időtengelye szavakban. A szűkített sort a hívó adja, hogy ne
+    /// számoljuk újra.
+    @ViewBuilder private func chartAxisCaption(_ ordered: [Snapshot]) -> some View {
         if let first = ordered.first?.date {
             HStack {
                 Text(Fmt.day(first))
@@ -399,8 +299,8 @@ struct HomeView: View {
     ///
     /// Enélkül a felhasználó azt hiszi, a vonal eltűnt vagy hibás — pedig
     /// egyszerűen nincs onnan mérés.
-    @ViewBuilder private var coverageNote: some View {
-        if let message = coverageMessage {
+    @ViewBuilder private func coverageNote(_ window: [Snapshot]) -> some View {
+        if let message = coverageMessage(window) {
             Text(message)
                 .font(DS.meta)
                 .foregroundStyle(DS.Color.inkSoft(0.45))
@@ -411,8 +311,7 @@ struct HomeView: View {
     /// A javítás MÁS a kétféle számlánál: az értékpapír-számla görbéje
     /// visszaszámolható a napi árfolyamokból, a készpénzszámláé viszont csak
     /// kivonatból jöhet. Egy közös mondat az egyiket félrevezetné.
-    private var coverageMessage: String? {
-        let window = rangedSnapshots
+    private func coverageMessage(_ window: [Snapshot]) -> String? {
         guard let start = window.first?.date else { return nil }
 
         func firstMeasurement(_ id: String) -> Date? {
@@ -469,7 +368,9 @@ struct HomeView: View {
     /// a DÁTUMBÓL jön.
     /// A választott időszakra szűkített mérések.
     private var rangedSnapshots: [Snapshot] {
-        let all = store.snapshots.sorted { $0.date < $1.date }
+        // A snapshots betöltéskor és minden összefésüléskor már rendezett —
+        // itt nem rendezünk újra (menetenként többször futott, fölöslegesen).
+        let all = store.snapshots
         guard let cutoff = range.cutoff else { return all }
         let filtered = all.filter { $0.date >= cutoff }
         // Egyetlen pontból nincs görbe: ilyenkor inkább a teljes sorozat,
@@ -477,8 +378,7 @@ struct HomeView: View {
         return filtered.count >= 2 ? filtered : all
     }
 
-    private var platformSeries: [IndexedChart.Series] {
-        let ordered = rangedSnapshots
+    private func platformSeries(_ ordered: [Snapshot]) -> [IndexedChart.Series] {
         guard let first = ordered.first?.date, let last = ordered.last?.date else { return [] }
         let span = last.timeIntervalSince(first)
         guard span > 0 else { return [] }
@@ -682,7 +582,11 @@ struct HomeView: View {
             loadingMovers = false
             return
         }
-        movers = await ConstituentWatcher().snapshot(of: composition)
+        let result = await ConstituentWatcher().snapshot(of: composition,
+                                                          history: store.constituentPrices)
+        // A mérést a store menti el — a watcher nem ír fájlt (lásd ott).
+        store.recordConstituentPrices(result.measured)
+        movers = result.moves
         loadingMovers = false
     }
 

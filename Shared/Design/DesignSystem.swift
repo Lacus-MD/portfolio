@@ -42,12 +42,61 @@ enum DS {
         }
         #endif
 
+        // MARK: Témánként egyszer felépített szerep-színek
+        //
+        // Az `adaptive(_:_:)` minden olvasáskor új UIColor-closure-t
+        // allokált — egy kezdőoldali menetben több százat. A témán belül fix
+        // szerepek most a téma VÁLTÁSAKOR épülnek fel egyszer; a rendszer
+        // világos/sötét módját a tárolt dinamikus UIColor magától követi,
+        // a témaváltás azonnaliságát pedig az adja, hogy a getterek továbbra
+        // is a megfigyelt `theme`-et olvassák — lásd lent.
+        private struct Palette {
+            let canvas, card, ink: SwiftUI.Color
+            let shellDeep, shell: SwiftUI.Color
+            let positive, negative, alwaysLight: SwiftUI.Color
+            let onShellBase: SwiftUI.Color
+            let accents: [SwiftUI.Color]
+            let inkOnAccents: [SwiftUI.Color]
+            let icons: [SwiftUI.Color]
+
+            init(_ theme: AppTheme) {
+                canvas = DS.Color.adaptive(theme.canvasLight, theme.canvasDark)
+                card = DS.Color.adaptive(theme.cardLight, theme.cardDark)
+                ink = DS.Color.adaptive(theme.inkLight, theme.inkDark)
+                shellDeep = DS.Color.adaptive(theme.shellDeepLight, theme.shellDeep)
+                shell = DS.Color.adaptive(theme.shellLight, theme.shell)
+                positive = SwiftUI.Color(hex: theme.positive)
+                negative = SwiftUI.Color(hex: theme.negative)
+                alwaysLight = SwiftUI.Color(hex: theme.canvasLight)
+                onShellBase = DS.Color.adaptive(theme.inkOnShellLight, 0xFFFFFF)
+                accents = theme.accents.map { SwiftUI.Color(hex: $0) }
+                inkOnAccents = theme.inkOnAccents.map { SwiftUI.Color(hex: $0) }
+                icons = theme.iconHues.map { SwiftUI.Color(hex: $0) }
+            }
+        }
+
+        /// Írás csak témaváltáskor történik, a fő szálról — ugyanaz a
+        /// szerződés, mint az `ActiveTheme` tárolójáé; ezért elég a
+        /// `nonisolated(unsafe)`.
+        nonisolated(unsafe) private static var paletteCache: (id: String, palette: Palette)?
+
+        private static var palette: Palette {
+            // A `theme` olvasása regisztrálja a SwiftUI-megfigyelést —
+            // enélkül a témaváltás nem érne el a gyorsítótárból kiszolgált
+            // nézetekhez, és azok a régi színeken ragadnának.
+            let theme = self.theme
+            if let cache = paletteCache, cache.id == theme.id { return cache.palette }
+            let built = Palette(theme)
+            paletteCache = (theme.id, built)
+            return built
+        }
+
         /// A képernyő alapja.
-        static var canvas: SwiftUI.Color { adaptive(theme.canvasLight, theme.canvasDark) }
+        static var canvas: SwiftUI.Color { palette.canvas }
         /// Kártyák, listasorok háttere a vásznon.
-        static var card: SwiftUI.Color { adaptive(theme.cardLight, theme.cardDark) }
+        static var card: SwiftUI.Color { palette.card }
         /// Elsődleges szövegszín a vásznon.
-        static var ink: SwiftUI.Color { adaptive(theme.inkLight, theme.inkDark) }
+        static var ink: SwiftUI.Color { palette.ink }
         static func inkSoft(_ alpha: Double) -> SwiftUI.Color { ink.opacity(alpha) }
 
         /// A részletképernyők alapja és lapja.
@@ -56,22 +105,22 @@ enum DS {
         /// újabb, világos héjú témáknál (Papír, Hajnal, Homok) világos módban
         /// világos árnyalat jön. Ezért **nem szabad fehér szöveget írni rájuk**:
         /// arra `onShell(_:)` van, ami követi a héjat.
-        static var plumDeep: SwiftUI.Color { adaptive(theme.shellDeepLight, theme.shellDeep) }
-        static var plum: SwiftUI.Color { adaptive(theme.shellLight, theme.shell) }
+        static var plumDeep: SwiftUI.Color { palette.shellDeep }
+        static var plum: SwiftUI.Color { palette.shell }
 
         /// A három platform-akcentus.
         /// A platform-akcentus sorszám szerint. A `%` nem díszítés: ha egy
         /// téma valaha kevesebb akcentust adna, itt körbefordul, nem omlik.
         static func accent(_ index: Int) -> SwiftUI.Color {
-            let list = theme.accents
+            let list = palette.accents
             guard !list.isEmpty else { return SwiftUI.Color(hex: 0xD09ECB) }
-            return SwiftUI.Color(hex: list[index % list.count])
+            return list[index % list.count]
         }
 
         static func inkOnAccent(_ index: Int) -> SwiftUI.Color {
-            let list = theme.inkOnAccents
+            let list = palette.inkOnAccents
             guard !list.isEmpty else { return SwiftUI.Color(hex: 0x331931) }
-            return SwiftUI.Color(hex: list[index % list.count])
+            return list[index % list.count]
         }
 
         static var coral: SwiftUI.Color { accent(0) }
@@ -84,8 +133,8 @@ enum DS {
         static var inkLilac: SwiftUI.Color { inkOnAccent(2) }
 
         /// Nyereség. NEM akcentus — lásd az `AppTheme.positive` magyarázatát.
-        static var positiveGreen: SwiftUI.Color { SwiftUI.Color(hex: theme.positive) }
-        static var negativeCream: SwiftUI.Color { SwiftUI.Color(hex: theme.negative) }
+        static var positiveGreen: SwiftUI.Color { palette.positive }
+        static var negativeCream: SwiftUI.Color { palette.negative }
         /// A vászon VILÁGOS változata, a rendszer beállításától függetlenül.
         ///
         /// Csak akkor szabad használni, ahol tényleg fix világos folt kell —
@@ -93,7 +142,7 @@ enum DS {
         /// navigációs sáv ezt kapta, ezért sötét módban világos sáv ült a lap
         /// tetején, olvashatatlan világos szöveggel. Oda `canvas` kell, ami
         /// követi a rendszert.
-        static var alwaysLight: SwiftUI.Color { SwiftUI.Color(hex: theme.canvasLight) }
+        static var alwaysLight: SwiftUI.Color { palette.alwaysLight }
 
         /// Nyereség/veszteség szín. A jelet a szám előjele és a nyíl is hordozza,
         /// hogy színtévesztéssel is olvasható maradjon.
@@ -106,7 +155,7 @@ enum DS {
         /// Szöveg a héjon. Sötét héjon fehér, világos héjon sötét tinta —
         /// ez az egyetlen helyes forma héj fölött, a nyers `.white` nem az.
         static func onShell(_ alpha: Double = 1) -> SwiftUI.Color {
-            adaptive(theme.inkOnShellLight, 0xFFFFFF).opacity(alpha)
+            alpha >= 1 ? palette.onShellBase : palette.onShellBase.opacity(alpha)
         }
         /// Régi név, ugyanaz a szerep.
         static func onPlum(_ alpha: Double = 1) -> SwiftUI.Color { onShell(alpha) }
@@ -123,9 +172,9 @@ enum DS {
         }
 
         static func icon(_ role: Icon) -> SwiftUI.Color {
-            let hues = theme.iconHues
+            let hues = palette.icons
             guard !hues.isEmpty else { return coral }
-            return SwiftUI.Color(hex: hues[role.rawValue % hues.count])
+            return hues[role.rawValue % hues.count]
         }
 
         /// Deviza — mindig ugyanaz a hue, hogy a szem megtanulja.

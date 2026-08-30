@@ -65,6 +65,11 @@ struct NewsView: View {
     private var composition: FundComposition? { store.knownComposition }
 
     var body: some View {
+        // A hírek moverenkénti csoportosítása EGYSZER, menetenként — a
+        // `news(for:)` korábban tételenként kétszer szűrte végig a teljes
+        // hírlistát (a szűrőben és a sor-rajzolásban is).
+        let newsByHolding = Dictionary(grouping: items.filter { $0.holding != nil },
+                                       by: { $0.holding ?? "" })
         NavigationStack {
             VStack(spacing: 0) {
                 header
@@ -75,7 +80,7 @@ struct NewsView: View {
                     // ismétlődő hírsorok belül továbbra is lusták.
                     VStack(alignment: .leading, spacing: 24) {
                         summaryCard
-                        holdingsSection
+                        holdingsSection(newsByHolding)
                         marketSection
                         footnote
                     }
@@ -235,21 +240,27 @@ struct NewsView: View {
 
     // MARK: - Tételek
 
-    private var visibleMovers: [ConstituentMove] {
+    /// A látható tételek a hozzájuk tartozó hírekkel EGY menetben: a
+    /// rendezés korábban kétszer, a hír-keresés tételenként kétszer futott
+    /// (egyszer a szűrőben, egyszer a sor rajzolásakor).
+    private func moverRows(_ newsByHolding: [String: [NewsItem]])
+        -> [(mover: ConstituentMove, news: [NewsItem])] {
         let sorted: [ConstituentMove]
         switch sort {
         case .impact: sorted = movers.sorted { abs($0.contributionPct) > abs($1.contributionPct) }
         case .weight: sorted = movers.sorted { $0.weightPct > $1.weightPct }
         case .move:   sorted = movers.sorted { abs($0.changePct) > abs($1.changePct) }
         }
+        let rows = sorted.map { (mover: $0, news: news(for: $0, in: newsByHolding)) }
         switch filter {
-        case .all:      return sorted
-        case .withNews: return sorted.filter { !news(for: $0).isEmpty }
-        case .bigMove:  return sorted.filter { abs($0.changePct) >= 1 }
+        case .all:      return rows
+        case .withNews: return rows.filter { !$0.news.isEmpty }
+        case .bigMove:  return rows.filter { abs($0.mover.changePct) >= 1 }
         }
     }
 
-    @ViewBuilder private var holdingsSection: some View {
+    @ViewBuilder private func holdingsSection(_ newsByHolding: [String: [NewsItem]]) -> some View {
+        let rows = moverRows(newsByHolding)
         VStack(alignment: .leading, spacing: 9) {
             sectionHeader("LEGNAGYOBB TÉTELEID") {
                 Button { withAnimation(.snappy(duration: 0.2)) { sort = sort.next } } label: {
@@ -265,7 +276,7 @@ struct NewsView: View {
 
             if loading && movers.isEmpty {
                 SkeletonRows(count: 4)
-            } else if visibleMovers.isEmpty {
+            } else if rows.isEmpty {
                 Text(filter == .withNews
                      ? "Ma egyik tételedről sincs hír. Ez a szokásos: nyolc papírról nem jelenik meg minden nap valami."
                      : "Ma egyik tételed sem mozdult 1%-nál nagyobbat.")
@@ -276,10 +287,10 @@ struct NewsView: View {
                     .opacity(contentVisible ? 1 : 0)
             } else {
                 LazyVStack(alignment: .leading, spacing: 6) {
-                    ForEach(visibleMovers) { mover in
+                    ForEach(rows, id: \.mover.id) { row in
                         VStack(alignment: .leading, spacing: 6) {
-                            holdingCard(mover)
-                            ForEach(news(for: mover)) { item in
+                            holdingCard(row.mover)
+                            ForEach(row.news) { item in
                                 attachedNews(item, accent: DS.Color.coral)
                             }
                         }
@@ -426,8 +437,9 @@ struct NewsView: View {
 
     // MARK: - Hírek
 
-    private func news(for mover: ConstituentMove) -> [NewsItem] {
-        let matched = items.filter { $0.holding == mover.name }
+    private func news(for mover: ConstituentMove,
+                      in newsByHolding: [String: [NewsItem]]) -> [NewsItem] {
+        let matched = newsByHolding[mover.name] ?? []
         let extra: NewsItem? = mover.headline.flatMap { headline in
             guard let link = mover.link,
                   !matched.contains(where: { $0.link == link }) else { return nil }
@@ -487,11 +499,14 @@ struct NewsView: View {
     }
 
     @ViewBuilder private var marketSection: some View {
+        // Egyszer számoljuk — korábban az üresség-vizsgálatok és a lista is
+        // külön-külön szűrték végig a teljes hírlistát.
+        let general = generalItems
         VStack(alignment: .leading, spacing: 0) {
             sectionHeader("PIACI HÍREK") { EmptyView() }
-            if generalItems.isEmpty && loading {
+            if general.isEmpty && loading {
                 SkeletonRows(count: 3).padding(.top, 8)
-            } else if generalItems.isEmpty {
+            } else if general.isEmpty {
                 Text("Most nincs olyan hír, ami a forintot vagy a piacot érintené. Csak azt mutatjuk, ami a te portfóliódra hat.")
                     .font(DS.font(12, .regular))
                     .foregroundStyle(DS.Color.inkSoft(0.5))
@@ -500,7 +515,7 @@ struct NewsView: View {
                     .opacity(contentVisible ? 1 : 0)
             } else {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(generalItems.prefix(12)) { item in
+                    ForEach(general.prefix(12)) { item in
                         Button { reading = item } label: { marketRow(item) }
                             .buttonStyle(.plain)
                             .foregroundStyle(DS.Color.ink)
@@ -621,17 +636,22 @@ struct NewsView: View {
         // MainActor-állapotot a párhuzamos feladatok elindítása ELŐTT
         // másolunk ki; így a háttérfeladat nem nyúl SwiftUI-állapothoz.
         let currentComposition = composition
+        let priceHistory = store.constituentPrices
         async let feed = NewsService().fetch(limit: 40)
-        async let moved: [ConstituentMove] = {
-            guard let currentComposition else { return [] }
-            return await ConstituentWatcher().snapshot(of: currentComposition)
+        async let moved: ([ConstituentMove], [String: Decimal]) = {
+            guard let currentComposition else { return ([], [:]) }
+            let result = await ConstituentWatcher().snapshot(of: currentComposition,
+                                                             history: priceHistory)
+            return (result.moves, result.measured)
         }()
         // Együtt cseréljük le a két helyőrző-adathalmazt. Ha a feed előbb
         // ért vissza, korábban eltűnhetett a skeleton, miközben a tételekre
         // még vártunk — ez egy rövid üres villanást okozott a fade előtt.
-        let (fetchedItems, fetchedMovers) = await (feed, moved)
+        let (fetchedItems, (fetchedMovers, measuredPrices)) = await (feed, moved)
         items = fetchedItems
         movers = fetchedMovers
+        // A mérést a store menti el — a watcher nem ír fájlt (lásd ott).
+        store.recordConstituentPrices(measuredPrices)
         // Az alap ténylegesen követett nagy komponensei is portfólió-
         // kitettségek. Ha valamelyik ±3%-ot mozdul, ugyanaz a zajszűrt,
         // napi egyszeri értesítés jár neki, mint a közvetlen pozícióknak.

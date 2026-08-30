@@ -62,11 +62,22 @@ enum Analytics {
         }
 
         // Bisectio, nem Newton: lassabb, de nem szalad el és nem oszt nullával.
+        // Toleranciás leállással: a 200 fix lépés fölösleges pontosságot
+        // számolt (a kijelzés két tizedes), és az alsó végpont NPV-jét is
+        // minden lépésben újraszámolta.
         var low = -0.9999, high = 10.0
-        guard npv(low) * npv(high) < 0 else { return nil }
-        for _ in 0..<200 {
+        var npvLow = npv(low)
+        guard npvLow * npv(high) < 0 else { return nil }
+        for _ in 0..<80 {
             let mid = (low + high) / 2
-            if npv(low) * npv(mid) <= 0 { high = mid } else { low = mid }
+            let npvMid = npv(mid)
+            if npvLow * npvMid <= 0 {
+                high = mid
+            } else {
+                low = mid
+                npvLow = npvMid
+            }
+            if high - low < 1e-7 { break }
         }
         let rate = (low + high) / 2
         return rate.isFinite ? rate * 100 : nil

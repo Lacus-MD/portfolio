@@ -18,19 +18,6 @@ struct AllocationPlannerView: View {
         store.investableSummaries
     }
 
-    private var targetDraft: [String: Double] {
-        var result = investable.reduce(into: [String: Double]()) { acc, summary in
-            acc[summary.platform.id] = targets[summary.platform.id] ?? 0
-        }
-
-        guard !result.isEmpty else { return result }
-
-        let normalized = store.normalizeAllocationTargets(result)
-        result = normalized
-
-        return result
-    }
-
     private var additionalAmount: Decimal {
         guard !amountText.isEmpty else { return 0 }
         let cleaned = amountText
@@ -98,7 +85,7 @@ struct AllocationPlannerView: View {
                                                 .foregroundStyle(DS.Color.inkSoft(0.55))
                                         }
                                         Spacer(minLength: 8)
-                                        Text(String(format: "%.1f%%", targetDraft[platformID] ?? 0))
+                                        Text(String(format: "%.1f%%", targets[platformID] ?? 0))
                                             .font(DS.font(12, .medium).monospacedDigit())
                                     }
 
@@ -196,8 +183,15 @@ struct AllocationPlannerView: View {
         .navigationBarTitleDisplayMode(.inline)
         .tint(DS.Color.coral)
         .onAppear(perform: resetFromStore)
-        .onChange(of: targets) { _, _ in
-            guard loadedTargets else { return }
+        // Mentés rövid szünettel: húzás közben a csúszka lépésenként változik,
+        // és minden lépésre menteni lépésenként teljes fájlírás lett volna.
+        // A .task(id:) az előző várakozót elnyeli, a nyugvópont után mentünk.
+        .task(id: targets) {
+            guard loadedTargets, !targets.isEmpty else { return }
+            try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled else { return }
+            // Betöltéskor a store-ból jövő értékre nem mentünk vissza.
+            guard targets != store.allocationTargetsForEditing() else { return }
             persistTargets()
         }
         .alert(item: $notice) { item in
@@ -212,17 +206,22 @@ struct AllocationPlannerView: View {
     }
 
     private func binding(for id: String) -> Binding<Double> {
+        // Szerkesztés közben a NYERS érték él: korábban a get a normalizált
+        // vázlatból olvasott, a set a nyersre írt, ezért a csúszka húzás
+        // közben visszaugrott a normalizált értékre.
         Binding {
-            targetDraft[id] ?? 0
+            targets[id] ?? 0
         } set: { newValue in
             targets[id] = newValue
         }
     }
 
     private func persistTargets() {
-        let normalized = store.normalizeAllocationTargets(targets)
-        targets = normalized
-        store.setAllocationTargets(normalized)
+        // A normalizálás a store dolga (a setter maga 100%-ra igazít); a
+        // nyers értéket NEM írjuk vissza a szerkesztő állapotba — a
+        // visszaírás újra elsütötte az onChange-et, és minden lépés két
+        // teljes mentés lett.
+        store.setAllocationTargets(targets)
     }
 
     @ViewBuilder private func sectionHeader(_ title: String) -> some View {

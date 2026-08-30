@@ -50,6 +50,7 @@ sikeres, a telefonos telepítés sikerült, és a commit felkerült GitHubra.
 | 26 | Beállítások és akadálymentesség | elkészült (telefonos ellenőrzés halasztva) | 02d1377 |
 | 27 | TestFlight Release Candidate | elkészült (telefonos ellenőrzés halasztva) | e01c963 |
 | 28 | Hosszú pull-down banki frissítés | elkészült (telefonos ellenőrzés halasztva) | 24848a9 |
+| 29 | iCloud szinkronizálás platformok és eszközök között | elkészült (telefonos ellenőrzés halasztva) | folyamatban |
 
 Engedélyezett állapotok:
 
@@ -75,7 +76,7 @@ Engedélyezett állapotok:
 6. Minden sikeres mérföldkő kerüljön fel a távoli ágra.
 7. Mérföldkő tag csak a telefonos ellenőrzés után készülhet:
    `build-21`, `build-22`, …, `build-27`.
-8. A `main` ágba csak a Build 27 megfigyelési időszaka után olvaszd vissza.
+8. A `main` ágba csak a Build 29 megfigyelési időszaka után olvaszd vissza.
 
 ### 4.2 Kötelező ellenőrzési sorrend
 
@@ -632,7 +633,7 @@ Kézzel teszteld:
 
 ### 12.3 Release folyamat
 
-1. Build 27 telepítése a fizikai iPhone-ra.
+1. Build 29 telepítése a fizikai iPhone-ra.
 2. 5–7 nap napi valós használat.
 3. A megfigyelési időszakban csak kritikus vagy adatbiztonsági hibák javítása.
 4. Ha új build kell, növeld a buildszámot; ne tölts fel ugyanazzal a számmal.
@@ -651,11 +652,12 @@ Kézzel teszteld:
 - Nincs reprodukálható görgetési akadás.
 - A TestFlight build telepíthető és elindul.
 
-Alternatív ellenőrzési eredmény: a Build 27 XcodeGen után az iOS Release,
-watchOS target és az unsigned unit-test target is sikeresen lefordult; a kész
-app bundle `CFBundleVersion` értéke 27, és a `git diff --check` tiszta. A
-fizikai iPhone-telepítés, a napi használati megfigyelés, az Archive/App Store
-Connect feltöltés és a `release/1.0` tag a telefon hiánya miatt halasztva marad.
+Alternatív ellenőrzési eredmény: a Build 29 XcodeGen után az iOS Release,
+watchOS target és az unsigned app target sikeresen lefordult; a kész app bundle
+`CFBundleVersion` értéke 29, és a `git diff --check` tiszta. A fizikai
+iPhone-telepítés, a kétkészülékes iCloud-próba, a napi használati megfigyelés,
+az Archive/App Store Connect feltöltés és a `release/1.0` tag a telefon hiánya
+miatt halasztva marad.
 
 ## 13. Végső Definition of Done
 

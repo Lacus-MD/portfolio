@@ -167,7 +167,13 @@ struct BankConnectionView: View {
         .scrollContentBackground(.hidden)
         .background(DS.Color.canvas)
         .foregroundStyle(DS.Color.ink)
-        .sheet(item: $banking.pendingAuth) { pending in
+        // Az onDismiss a LEHÚZOTT lapot is lezárja: enélkül a szolgáltatás
+        // continuationje örökre függőben maradt, az isWorking igazon ragadt,
+        // és minden banki művelet némán kiesett az újraindításig. Sikeres
+        // jóváhagyás után is lefut, de akkor a continuation már nincs meg,
+        // és a hívás nem tesz semmit.
+        .sheet(item: $banking.pendingAuth,
+               onDismiss: { banking.finishAuthentication(.failure(CancellationError())) }) { pending in
             BankAuthSheet(url: pending.url,
                           redirectPrefix: pending.redirectPrefix,
                           bankName: pending.bankName) { result in

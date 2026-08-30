@@ -9,22 +9,52 @@ extension Decimal {
 enum Fmt {
     private static let hungarian = Locale(identifier: "hu_HU")
 
+    // MARK: Formázó-gyorsítótár
+    //
+    // Korábban MINDEN hívás új NumberFormatter-t allokált — egy kezdőoldali
+    // menetben 25–40, a widgetben 15–20 példányt. A formázó felépítése drága
+    // (ICU-inicializálás), a használata olcsó, ezért konfigurációnként
+    // egyszer építjük fel, és utána csak olvassuk.
+    //
+    // A NumberFormatter nem Sendable, ezért kell a `nonisolated(unsafe)`.
+    // Ez itt biztonságos: a szótár írását zár védi, a kész formázókat pedig
+    // a konfigurálás után soha nem mutáljuk — a Foundation dokumentáltan
+    // szálbiztosnak tekinti a nem mutált formázók párhuzamos olvasását.
+    nonisolated(unsafe) private static var cache: [String: NumberFormatter] = [:]
+    private static let cacheLock = NSLock()
+
+    private static func formatter(_ key: String,
+                                  _ build: () -> NumberFormatter) -> NumberFormatter {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+        if let cached = cache[key] { return cached }
+        let built = build()
+        cache[key] = built
+        return built
+    }
+
     static func huf(_ value: Decimal) -> String {
-        let f = NumberFormatter()
-        f.locale = hungarian
-        f.numberStyle = .currency
-        f.currencyCode = "HUF"
-        f.maximumFractionDigits = 0
+        let f = formatter("huf") {
+            let f = NumberFormatter()
+            f.locale = hungarian
+            f.numberStyle = .currency
+            f.currencyCode = "HUF"
+            f.maximumFractionDigits = 0
+            return f
+        }
         return f.string(from: NSDecimalNumber(decimal: value)) ?? "—"
     }
 
     static func eur(_ value: Decimal, fractionDigits: Int = 2) -> String {
-        let f = NumberFormatter()
-        f.locale = hungarian
-        f.numberStyle = .currency
-        f.currencyCode = "EUR"
-        f.maximumFractionDigits = fractionDigits
-        f.minimumFractionDigits = fractionDigits
+        let f = formatter("eur\(fractionDigits)") {
+            let f = NumberFormatter()
+            f.locale = hungarian
+            f.numberStyle = .currency
+            f.currencyCode = "EUR"
+            f.maximumFractionDigits = fractionDigits
+            f.minimumFractionDigits = fractionDigits
+            return f
+        }
         return f.string(from: NSDecimalNumber(decimal: value)) ?? "—"
     }
 
@@ -43,12 +73,15 @@ enum Fmt {
     /// Magyar tizedesvesszővel. A `String(format:)` mindig pontot ír, ami
     /// magyarul hibás — és a felület minden százaléka ezen ment át.
     static func percent(_ value: Double, digits: Int = 2) -> String {
-        let f = NumberFormatter()
-        f.locale = hungarian
-        f.numberStyle = .decimal
-        f.minimumFractionDigits = digits
-        f.maximumFractionDigits = digits
-        f.positivePrefix = "+"
+        let f = formatter("pct+\(digits)") {
+            let f = NumberFormatter()
+            f.locale = hungarian
+            f.numberStyle = .decimal
+            f.minimumFractionDigits = digits
+            f.maximumFractionDigits = digits
+            f.positivePrefix = "+"
+            return f
+        }
         let number = f.string(from: NSNumber(value: value)) ?? "—"
         return number + "%"
     }
@@ -59,40 +92,56 @@ enum Fmt {
 
     /// Darabszám magyar ezres-tagolással: 3 747, nem 3,747.
     static func count(_ value: Int) -> String {
-        let f = NumberFormatter()
-        f.locale = hungarian
-        f.numberStyle = .decimal
-        f.maximumFractionDigits = 0
+        let f = formatter("count") {
+            let f = NumberFormatter()
+            f.locale = hungarian
+            f.numberStyle = .decimal
+            f.maximumFractionDigits = 0
+            return f
+        }
         return f.string(from: NSNumber(value: value)) ?? String(value)
     }
 
     /// Százalék előjel nélkül, magyar tizedesvesszővel.
     static func percentPlain(_ value: Double, digits: Int = 1) -> String {
-        let f = NumberFormatter()
-        f.locale = hungarian
-        f.numberStyle = .decimal
-        f.minimumFractionDigits = digits
-        f.maximumFractionDigits = digits
+        let f = formatter("pct\(digits)") {
+            let f = NumberFormatter()
+            f.locale = hungarian
+            f.numberStyle = .decimal
+            f.minimumFractionDigits = digits
+            f.maximumFractionDigits = digits
+            return f
+        }
         return (f.string(from: NSNumber(value: value)) ?? "—") + "%"
     }
 
     /// `min`: kötelező tizedesek. Árnál kell: a „265,2" és a „295,65"
     /// egymás alatt ugráló oszlopot ad, ami egy táblázatban zavaró.
     static func decimal(_ value: Decimal, min: Int = 0, max: Int = 4) -> String {
-        let f = NumberFormatter()
-        f.locale = hungarian
-        f.numberStyle = .decimal
-        f.minimumFractionDigits = min
-        f.maximumFractionDigits = max
+        let f = formatter("dec\(min)-\(max)") {
+            let f = NumberFormatter()
+            f.locale = hungarian
+            f.numberStyle = .decimal
+            f.minimumFractionDigits = min
+            f.maximumFractionDigits = max
+            return f
+        }
         return f.string(from: NSDecimalNumber(decimal: value)) ?? "—"
     }
 
     /// „2026. augusztus" — a Kiadások fül fejléce.
-    static func month(_ date: Date) -> String {
+    ///
+    /// Egyszer felépítve; a konfigurálás után nem mutáljuk, így a
+    /// DateFormatter olvasása szálbiztos.
+    nonisolated(unsafe) private static let monthFormatter: DateFormatter = {
         let f = DateFormatter()
         f.locale = hungarian
         f.dateFormat = "yyyy. MMMM"
-        return f.string(from: date)
+        return f
+    }()
+
+    static func month(_ date: Date) -> String {
+        monthFormatter.string(from: date)
     }
 
     static func day(_ date: Date) -> String {

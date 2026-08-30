@@ -7,7 +7,9 @@ struct PortfolioProvider: TimelineProvider {
     func getSnapshot(in context: Context, completion: @escaping (PortfolioEntry) -> Void) {
         // A galéria-előnézet ne lógjon a hálózaton — ott a minta a helyes válasz.
         if context.isPreview { return completion(.placeholder) }
-        Task { completion(await PortfolioEntry.make()) }
+        // Az előnézet CSAK megjelenít: a portfóliófájlba mérést írni az
+        // idővonal dolga, nem egy galéria-villanásé.
+        Task { completion(await PortfolioEntry.make(writeSnapshot: false)) }
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<PortfolioEntry>) -> Void) {

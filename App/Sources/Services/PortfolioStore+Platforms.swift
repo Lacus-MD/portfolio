@@ -39,7 +39,13 @@ extension PortfolioStore {
     /// A számítás nem itt él, hanem a `PortfolioMath`-ban, mert a widgetnek is
     /// kell — és amíg két helyen volt, el is csúsztak: a widget csak az
     /// értékpapírokból számolt, euróban, a bekerülési árhoz mérve.
+    /// Gyorsítótárazva (`mathCache`): a payload és az ár-szótár korábban
+    /// minden `valueHUF`-hívásra újraépült — a `derivedStamp` olvasása itt is
+    /// egyszerre dönt az érvényességről és regisztrálja a SwiftUI-megfigyelést
+    /// (lásd a `platformSummaries` magyarázatát).
     var mathPayload: PortfolioFile.Payload {
+        let stamp = derivedStamp
+        if let cache = mathCache, cache.stamp == stamp { return cache.payload }
         var payload = PortfolioFile.Payload()
         payload.holdings = holdings
         payload.deposits = deposits
@@ -48,11 +54,20 @@ extension PortfolioStore {
         payload.cash = cash
         payload.conversionSpread = conversionSpread
         payload.snapshots = snapshots
+        let prices = PortfolioMath.Prices(quotes: quotes.mapValues(\.price),
+                                          fxRate: fxRate, usdRate: usdRate)
+        mathCache = (stamp, payload, prices)
         return payload
     }
 
     var mathPrices: PortfolioMath.Prices {
-        .init(quotes: quotes.mapValues(\.price), fxRate: fxRate, usdRate: usdRate)
+        let stamp = derivedStamp
+        if let cache = mathCache, cache.stamp == stamp { return cache.prices }
+        // A payload-getter tölti fel a közös gyorsítótárat — mindkettő
+        // ugyanabból a bejegyzésből dolgozik.
+        _ = mathPayload
+        return mathCache?.prices
+            ?? .init(quotes: quotes.mapValues(\.price), fxRate: fxRate, usdRate: usdRate)
     }
 
     /// A követett platformok. Ha nincs kézzel megadott lista, a pozíciók és a
@@ -99,7 +114,8 @@ extension PortfolioStore {
     /// A hitelkártya és folyószámla is pénzügyi adat, de a célallokációnál
     /// ezek már nem befektetések, ezért kizárjuk őket.
     var investablePlatforms: [Platform] {
-        resolvedPlatforms.filter(\.hasMeaningfulGain)
+        // A gyorsítótárazott összesítőkből — külön platformfeloldás nélkül.
+        platformSummaries.map(\.platform).filter(\.hasMeaningfulGain)
     }
 
     /// A befektethető platformok összesítői.
@@ -113,8 +129,9 @@ extension PortfolioStore {
 
     /// Nem befektethető vagyon: tartozás + folyószámla abszolút értéke.
     var nonInvestableHUF: Decimal {
-        resolvedPlatforms.filter { $0.isLiability || $0.isTransactional }
-            .reduce(Decimal(0)) { $0 + valueHUF(ofPlatform: $1.id).magnitude }
+        platformSummaries
+            .filter { $0.platform.isLiability || $0.platform.isTransactional }
+            .reduce(Decimal(0)) { $0 + $1.valueHUF.magnitude }
     }
 
     private var computedSummaries: [PlatformSummary] {
@@ -281,8 +298,12 @@ extension PortfolioStore {
     }
 
     /// A teljes vagyon minden platformon.
+    ///
+    /// A gyorsítótárazott `platformSummaries`-ból: egy kezdőoldali menet
+    /// 8–10 aggregátor-lekérése korábban mind külön körben számolta végig
+    /// az összes platform értékét.
     var grandTotalHUF: Decimal {
-        resolvedPlatforms.reduce(Decimal(0)) { $0 + valueHUF(ofPlatform: $1.id) }
+        platformSummaries.reduce(Decimal(0)) { $0 + $1.valueHUF }
     }
 
     /// Az összesített befizetés csak a KÍVÜLRŐL érkezett pénzt számolja.
@@ -292,7 +313,13 @@ extension PortfolioStore {
     /// Az összesített befizetés. A szabály (belső átvezetés nem új pénz, de
     /// a párja nélkül maradt átvezetés igen) a `PortfolioMath`-ban van
     /// leírva — ott, ahol a widget is olvassa.
-    var grandDepositsHUF: Decimal { PortfolioMath.depositsHUF(mathPayload) }
+    var grandDepositsHUF: Decimal {
+        let stamp = derivedStamp
+        if let cache = grandDepositsCache, cache.stamp == stamp { return cache.value }
+        let value = PortfolioMath.depositsHUF(mathPayload)
+        grandDepositsCache = (stamp, value)
+        return value
+    }
 
     /// Igaz, ha a belső átvezetések nem csengenek ki — vagyis hiányzik az
     /// egyik oldal kivonata. A felület ezt jelzi, mert a hiányzó fájl a
@@ -340,16 +367,16 @@ extension PortfolioStore {
     /// amit befektettél: egy hitelkártya-tartozás nem befektetési veszteség.
     /// Beleszámolva a hozam −44,66%-ot mutatott attól, hogy van kártyád.
     var assetsHUF: Decimal {
-        resolvedPlatforms
-            .filter(\.hasMeaningfulGain)
-            .reduce(Decimal(0)) { $0 + valueHUF(ofPlatform: $1.id) }
+        platformSummaries
+            .filter(\.platform.hasMeaningfulGain)
+            .reduce(Decimal(0)) { $0 + $1.valueHUF }
     }
 
     /// Az összes tartozás, pozitív számként.
     var liabilitiesHUF: Decimal {
-        -resolvedPlatforms
-            .filter(\.isLiability)
-            .reduce(Decimal(0)) { $0 + valueHUF(ofPlatform: $1.id) }
+        -platformSummaries
+            .filter(\.platform.isLiability)
+            .reduce(Decimal(0)) { $0 + $1.valueHUF }
     }
 
     var grandGainHUF: Decimal { assetsHUF - grandDepositsHUF }
@@ -523,8 +550,8 @@ extension PortfolioStore {
     /// veszteség, csak egy új kötelezettség.
     var todayByPlatform: [String: Decimal] {
         Dictionary(uniqueKeysWithValues:
-            resolvedPlatforms.filter { !$0.isLiability }
-                .map { ($0.id, valueHUF(ofPlatform: $0.id)) })
+            platformSummaries.filter { !$0.platform.isLiability }
+                .map { ($0.platform.id, $0.valueHUF) })
     }
 
     /// Napi, heti és havi eredmény. Csak azok az időszakok jönnek vissza,

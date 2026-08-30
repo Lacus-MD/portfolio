@@ -106,22 +106,35 @@ final class ArticleExtractor: NSObject {
     private func extract(reason: Reason) {
         guard !finished, let view = webView else { return }
         view.evaluateJavaScript(Self.script) { [weak self] result, _ in
-            guard let self else { return }
+            guard let self, !self.finished else { return }
             guard let json = result as? String,
                   let data = json.data(using: .utf8),
                   let raw = try? JSONDecoder().decode(RawArticle.self, from: data),
                   !raw.paragraphs.isEmpty
             else {
-                // Időzítőre még nem adjuk fel: hátha a betöltés befejeződik.
-                if reason == .finished { self.finished = true; self.failed = true }
+                // Nincs kinyerhető szöveg — sem a betöltés végén, sem a
+                // határidőn. Korábban időzítőnél tovább vártunk „hátha", de
+                // sikertelen oldalnál a rejtett WKWebView örökre életben
+                // maradt és töltött. Minden kilépési ág leállít és elenged.
+                self.finished = true
+                self.failed = true
+                self.cleanup()
                 return
             }
             self.finished = true
             self.article = Article(title: raw.title,
                                    byline: raw.byline?.isEmpty == false ? raw.byline : nil,
                                    paragraphs: raw.paragraphs)
-            self.webView = nil
+            self.cleanup()
         }
+    }
+
+    /// A rejtett böngésző leállítása és elengedése — MINDEN kilépési ág ezt
+    /// hívja, különben a nézet a háttérben tovább él és hálózik.
+    private func cleanup() {
+        webView?.stopLoading()
+        webView?.navigationDelegate = nil
+        webView = nil
     }
 
     private struct RawArticle: Decodable {

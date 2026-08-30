@@ -62,12 +62,33 @@ final class PortfolioStore {
     // lásd ott.
     @ObservationIgnored var summariesCache: (stamp: DerivedStamp, value: [PlatformSummary])?
 
+    /// A KÖZÖS matek bemenete gyorsítótárazva. Korábban minden `valueHUF`-
+    /// hívás új payloadot és új árfolyam-szótárat épített — egy kezdőoldali
+    /// menet 8–10 aggregátor-lekérésénél ez képkockánként ismétlődő másolás
+    /// volt. Ugyanaz a minta, mint a `summariesCache`: a `derivedStamp` dönt.
+    @ObservationIgnored var mathCache: (stamp: DerivedStamp,
+                                        payload: PortfolioFile.Payload,
+                                        prices: PortfolioMath.Prices)?
+
+    /// Az összesített befizetés gyorsítótára. A `PortfolioMath.depositsHUF`
+    /// a belső átvezetések párosítása miatt nem egyszerű összeadás, és a
+    /// fejléc meg az óra-összefoglaló menetenként többször kéri.
+    @ObservationIgnored var grandDepositsCache: (stamp: DerivedStamp, value: Decimal)?
+
     /// Olcsó ujjlenyomat arról, amiből az összesítés készül. Ha ez azonos,
     /// az eredmény is azonos — nem kell újraszámolni.
     struct DerivedStamp: Equatable {
         let holdings: Int, deposits: Int, platforms: Int, cashAssets: Int
-        let quotes: Int, cash: Int, order: Int
+        let quotes: Int, cash: Int
+        /// A sorrend TARTALMA, nem a hossza: átrendezéskor a darabszám
+        /// ugyanaz marad, az összesítés sorrendje mégis más.
+        let orderHash: Int
+        /// Számlánkénti árrés tartalma — kulcscsere és értékváltás is látszik.
+        let spreadHash: Int
         let fxRate: Decimal
+        /// Az USD-átváltás is bemenete az összesítésnek; nélküle a frissülő
+        /// USD-árfolyam nem érvénytelenítette a gyorsítótárat.
+        let usdRate: Decimal
         let quotesSum: Decimal
         /// Minden mentés lépteti. A puszta DARABSZÁM nem elég: egy kivonat
         /// újraolvasása töröl és visszatesz ugyanannyi tételt, más
@@ -76,8 +97,9 @@ final class PortfolioStore {
     }
 
     /// Minden mentésnél nő. Lásd a `DerivedStamp.mutation` magyarázatát.
+    /// A cash/cashAssets ÉRTÉK-változását is ez fedi le: minden módosító
+    /// útvonal save()-vel zár, az pedig lépteti a számlálót.
     @ObservationIgnored private(set) var mutationCount = 0
-    func bumpMutation() { mutationCount &+= 1 }
 
     /// A getterben olvassuk EZEKET, hogy a SwiftUI megfigyelése akkor is
     /// felépüljön, amikor a gyorsítótárból válaszolunk. Enélkül a nézet nem
@@ -86,7 +108,9 @@ final class PortfolioStore {
         DerivedStamp(holdings: holdings.count, deposits: deposits.count,
                      platforms: platforms.count, cashAssets: cashAssets.count,
                      quotes: quotes.count, cash: cash.count,
-                     order: platformOrder.count, fxRate: fxRate,
+                     orderHash: platformOrder.hashValue,
+                     spreadHash: conversionSpread.hashValue,
+                     fxRate: fxRate, usdRate: usdRate,
                      // Az árfolyamok ÉRTÉKE is számít, nem csak a darabszámuk:
                      // frissítéskor a kulcsok ugyanazok maradnak.
                      quotesSum: quotes.values.reduce(Decimal(0)) { $0 + $1.price },
@@ -99,6 +123,11 @@ final class PortfolioStore {
     /// ISIN → nap → halmozott darabszám a kivonatból. A visszatöltés ebből
     /// tudja, hány darab volt egy adott napon.
     private(set) var quantityTimeline: [String: [String: Decimal]] = [:]
+    /// Komponensenkénti napi záróár, ISIN → nap → ár. A `ConstituentWatcher`
+    /// mérései IDE futnak be, és a mentés innen írja vissza — korábban a
+    /// mentés kihagyta ezt a mezőt, ezért minden save() üresre írta a fájlban
+    /// a napról napra gyűjtött görbét.
+    private(set) var constituentPrices: [String: [String: Decimal]] = [:]
     /// Elrejtett hírek hivatkozásai.
     private(set) var hiddenNews: Set<String> = []
     private(set) var expenses: [ExpenseEntry] = []
@@ -113,6 +142,17 @@ final class PortfolioStore {
     var isRefreshing = false
     var lastError: String?
     var lastRefresh: Date?
+    /// The last cloud revision this device successfully pulled or published.
+    /// This is deliberately separate from `lastRefresh`: market data can be
+    /// refreshed locally without changing the cross-device revision.
+    private(set) var lastCloudSync: Date? = PortfolioCloudSync.lastSyncedAt
+    private(set) var cloudSyncError: String?
+
+    var cloudSyncStatus: String {
+        if let cloudSyncError { return cloudSyncError }
+        if lastCloudSync != nil { return "Automatikus · aktív" }
+        return "Automatikus · első szinkronra vár"
+    }
 
     private let quoteService = QuoteService()
     private let fxService = FXService()
@@ -278,6 +318,9 @@ final class PortfolioStore {
 
     /// A futó frissítés, hogy a párhuzamos hívók megvárhassák.
     private var refreshTask: Task<Void, Never>?
+    /// A futó frissítés azonosítója. A `Task` nem Equatable, ezért ebből
+    /// tudjuk, hogy a végén még a SAJÁT feladatunkat takarítjuk-e el.
+    private var refreshGeneration = UUID()
 
     /// Frissítés összevonással.
     ///
@@ -294,9 +337,14 @@ final class PortfolioStore {
             if !force { return }
         }
         let task = Task { await performRefresh() }
+        let generation = UUID()
         refreshTask = task
+        refreshGeneration = generation
         await task.value
-        refreshTask = nil
+        // Csak a saját bejegyzésünket ürítjük. Egy force-hívó közben új
+        // feladatot regisztrálhatott; ha azt nil-eznénk ki, egy harmadik
+        // hívó párhuzamos frissítő kört indíthatna mellette.
+        if refreshGeneration == generation { refreshTask = nil }
     }
 
     private func performRefresh() async {
@@ -372,7 +420,9 @@ final class PortfolioStore {
 
         lastRefresh = Date()
         recordSnapshotIfPossible()
-        save()
+        // Összevont mentés: import után a beolvasó útvonal is ment, és a
+        // kettő így egyetlen fájlírássá és widget-ébresztéssé olvad össze.
+        saveSoon()
     }
 
     /// Napi pillanatkép — naponta egy, felülírva, ha ma már volt.
@@ -608,7 +658,8 @@ final class PortfolioStore {
         deposits.sort { $0.date < $1.date }
         fees.sort { $0.date < $1.date }
 
-        save()
+        // A frissítés köre a végén úgyis ment — összevonva egy írás lesz.
+        saveSoon()
         await refresh(force: true)
         return (result.warnings, account)
     }
@@ -628,7 +679,7 @@ final class PortfolioStore {
         upsertKind(.savings, id: result.platformID, name: result.accountName, monogram: "AK")
 
         cashAssets.append(result.asset)
-        save()
+        saveSoon()
         await refresh(force: true)
 
         return (result.warnings, result.accountName)
@@ -657,6 +708,15 @@ final class PortfolioStore {
         if let running = startupTask { return await running.value }
 
         let task = Task { [self] in
+            // Pull the newest portfolio before processing imports or asking
+            // the quote/banking layers to refresh. This makes a new device
+            // converge to the existing iCloud state before its first save.
+            let remote = await Task.detached(priority: .utility) {
+                PortfolioCloudSync.pullIfNewer()
+            }.value
+            if let remote {
+                applyCloudEnvelope(remote)
+            }
             let report = await processInbox()
             // iCloud metadata-frissítés gyakran érkezik úgy is, hogy nincs új
             // kivonat. Ilyenkor öt percen belül nem kérjük le újra az összes
@@ -669,6 +729,30 @@ final class PortfolioStore {
         let report = await task.value
         startupTask = nil
         return report
+    }
+
+    /// Applies a remote snapshot without treating it as a user edit. The
+    /// local App Group copy is updated so widgets and the next cold start see
+    /// the same state, but no second cloud write is scheduled.
+    private func applyCloudEnvelope(_ envelope: PortfolioCloudSync.Envelope) {
+        applyPayload(envelope.payload)
+        PortfolioCloudSync.markPulled(envelope)
+        lastCloudSync = envelope.updatedAt
+        cloudSyncError = nil
+
+        let generation = mutationCount
+        let encrypted = BackupSecurityManager.isEnabled
+        Task { [weak self] in
+            let written = await PortfolioPersistenceWriter.shared.save(
+                envelope.payload, generation: generation, encrypted: encrypted
+            )
+            if written { WidgetCenter.shared.reloadAllTimelines() }
+            guard let self else { return }
+            // A legacy payload may still need the current-account migration.
+            // That migration is a real local edit and will be published by
+            // the normal save path on the next run-loop turn.
+            self.migrateCurrentAccountKinds()
+        }
     }
 
     /// Feldolgozza a megosztólapról érkezett fájlokat.
@@ -813,6 +897,19 @@ final class PortfolioStore {
         expenses = byID.values.sorted { $0.date > $1.date }
 
         if result.kind == .credit {
+            // IDŐRENDI ŐR: ha a nálunk lévő adat frissebb a kivonatnál
+            // (kézzel átírtad a tartozást, vagy már beolvastad a következő
+            // havit), a RÉGEBBI kivonat nem írhatja felül. A tételei attól
+            // még bekerülnek — azok a saját napjukhoz tartoznak.
+            if let existing = creditCards.first(where: { $0.platform == id }),
+               existing.asOf > statementDate(result) {
+                saveSoon()
+                var warnings = result.warnings
+                warnings.append("A kivonat \(Fmt.day(statementDate(result))) keltű, a nálam lévő "
+                              + "tartozás-adat frissebb (\(Fmt.day(existing.asOf))) — az egyenleget "
+                              + "nem írtam felül, a tételeket igen.")
+                return (warnings, name)
+            }
             // A tartozás NEGATÍV eszközként. A `closing` már negatív a
             // kivonatban (−650 867), tehát pont jó előjellel jön.
             cashAssets.removeAll { $0.platform == id }
@@ -859,7 +956,7 @@ final class PortfolioStore {
             mergeHistory(platformID: id, daily: result.dailyBalances)
         }
 
-        save()
+        saveSoon()
         var warnings = result.warnings
         warnings.append("\(result.entries.count) tétel beolvasva, \(expenses.filter { $0.account == id }.count) van összesen ezen a számlán.")
         return (warnings, name)
@@ -962,7 +1059,8 @@ final class PortfolioStore {
 
         cashAssets.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         expenses = byID.values.sorted { $0.date > $1.date }
-        save()
+        // A banki kör gyakran a frissítéssel együtt fut — a mentésük összeolvad.
+        saveSoon()
         return newMovements
     }
 
@@ -1048,7 +1146,7 @@ final class PortfolioStore {
         deposits.sort { $0.date < $1.date }
         fees.sort { $0.date < $1.date }
         mergeHistory(platformID: id, daily: result.dailyBalances)
-        save()
+        saveSoon()
 
         var warnings = result.warnings
         if !result.dailyBalances.isEmpty {
@@ -1156,6 +1254,55 @@ final class PortfolioStore {
         save()
     }
 
+    /// A hitelkártya-tartozás kézi átírása.
+    ///
+    /// Azért kell, mert a kivonat havonta egyszer jön: aki közben
+    /// visszafizetett, annak az app hetekig a régi, magasabb tartozást
+    /// mutatná. A kézi érték a MAI nappal kerül be, így az időrend dönt:
+    /// a következő, ENNÉL FRISSEBB kivonat felülírja — a régebbi nem.
+    func setCreditCardDebt(platform: String, debt: Decimal) {
+        let amount = abs(debt)
+        let now = Date()
+        if let index = creditCards.firstIndex(where: { $0.platform == platform }) {
+            creditCards[index].totalDebt = amount
+            creditCards[index].asOf = now
+        } else {
+            creditCards.append(CreditCardStatus(platform: platform, totalDebt: amount, asOf: now))
+        }
+        if let index = cashAssets.firstIndex(where: { $0.platform == platform }) {
+            cashAssets[index].balance = -amount
+            cashAssets[index].asOf = now
+        }
+        // A minimum-összeg a KIVONAT tartozásához tartozott; az új összeghez
+        // már nem tudjuk, mennyi — inkább nem állítunk hamisat.
+        if let index = creditCards.firstIndex(where: { $0.platform == platform }),
+           amount == 0 {
+            creditCards[index].minimumPayment = nil
+        }
+        let card = creditCards.first { $0.platform == platform }
+        Task { await PaymentReminder.schedule(for: card) }
+        save()
+    }
+
+    /// A `ConstituentWatcher` aznapi méréseinek beírása.
+    ///
+    /// Szándékosan a store-on át megy, nem közvetlen fájlírással: a watcher
+    /// hálózati köre 10+ másodpercig is tarthat, és a teljes fájl visszaírása
+    /// a végén eldobta volna az app közbeni mentéseit. Itt csak ezt az egy
+    /// mezőt frissítjük, és a mentés a generációvédett íróra fut. Két
+    /// párhuzamos hívó (HomeView + NewsView) is biztonságos: mindkettő a
+    /// főaktoron fésüli be a saját mérését.
+    func recordConstituentPrices(_ measured: [String: Decimal]) {
+        guard !measured.isEmpty else { return }
+        let today = ConstituentWatcher.dayKey(Date())
+        for (isin, price) in measured {
+            constituentPrices[isin, default: [:]][today] = price
+        }
+        // A HomeView és a NewsView közel egyszerre is beadhatja a mérését —
+        // összevonva egyetlen fájlírás lesz belőlük.
+        saveSoon()
+    }
+
     func deleteCashAsset(_ asset: CashAsset) {
         cashAssets.removeAll { $0.id == asset.id }
         save()
@@ -1188,6 +1335,74 @@ final class PortfolioStore {
 
     // MARK: - Tárolás
 
+    /// Copies an in-memory state into the Codable payload shared by the app,
+    /// widgets, and the iCloud sync layer.
+    private func makePayload() -> PortfolioFile.Payload {
+        var payload = PortfolioFile.Payload()
+        payload.holdings = holdings
+        payload.snapshots = snapshots
+        payload.deposits = deposits
+        payload.fees = fees
+        payload.platforms = platforms
+        payload.cashAssets = cashAssets
+        payload.cash = cash
+        payload.conversionSpread = conversionSpread
+        payload.tbszRules = tbszRules
+        payload.trades = trades
+        payload.platformOrder = platformOrder
+        payload.bankLinkedPlatforms = bankLinkedPlatforms
+        payload.quantityTimeline = quantityTimeline
+        payload.constituentPrices = constituentPrices
+        payload.hiddenNews = Array(hiddenNews)
+        payload.expenses = expenses
+        payload.creditCards = creditCards
+        payload.allocationTargets = allocationTargets
+        payload.themeID = themeID
+        payload.scenario = scenario
+        payload.lastRefresh = lastRefresh
+        payload.fxRate = fxRate
+        payload.lastPrices = quotes.mapValues(\.price)
+        return payload
+    }
+
+    /// Applies a Codable payload to the observable in-memory model. Keeping
+    /// this separate from `load()` is what lets a remote device update be
+    /// applied without constructing a second store or resetting UI state.
+    private func applyPayload(_ payload: PortfolioFile.Payload) {
+        holdings = payload.holdings
+        snapshots = payload.snapshots.sorted { $0.date < $1.date }
+        deposits = payload.deposits.sorted { $0.date < $1.date }
+        fees = payload.fees.sorted { $0.date < $1.date }
+        platforms = payload.platforms
+        cashAssets = payload.cashAssets
+        cash = payload.cash
+        conversionSpread = payload.conversionSpread
+        tbszRules = payload.tbszRules
+        trades = payload.trades
+        platformOrder = payload.platformOrder
+        bankLinkedPlatforms = payload.bankLinkedPlatforms
+        quantityTimeline = payload.quantityTimeline
+        constituentPrices = payload.constituentPrices
+        hiddenNews = Set(payload.hiddenNews)
+        expenses = payload.expenses
+        creditCards = payload.creditCards
+        allocationTargets = payload.allocationTargets
+        themeID = payload.themeID
+        DS.Color.theme = AppTheme.named(payload.themeID)
+        scenario = payload.scenario
+        lastRefresh = payload.lastRefresh
+        fxRate = payload.fxRate
+        quotes.removeAll(keepingCapacity: true)
+        for holding in holdings {
+            if let price = payload.lastPrices[holding.isin] {
+                quotes[holding.isin] = Quote(isin: holding.isin, price: price,
+                                             changePercent: 0,
+                                             timestamp: payload.lastRefresh ?? .distantPast)
+            }
+        }
+        mutationCount &+= 1
+    }
+
     func load() {
         let (payload, status) = PortfolioFile.loadDetailed()
 
@@ -1204,83 +1419,98 @@ final class PortfolioStore {
             lastError = "A tárolt adatot nem sikerült elolvasni. Amíg ez így van, az app nem ír a fájlra, hogy ne vesszen el. Olvasd be újra a kivonatot."
             return
         }
-        holdings = payload.holdings
-        snapshots = payload.snapshots.sorted { $0.date < $1.date }
-        deposits = payload.deposits.sorted { $0.date < $1.date }
-        fees = payload.fees.sorted { $0.date < $1.date }
-        platforms = payload.platforms
-        cashAssets = payload.cashAssets
-        cash = payload.cash
-        conversionSpread = payload.conversionSpread
-        tbszRules = payload.tbszRules
-        trades = payload.trades
-        platformOrder = payload.platformOrder
-        bankLinkedPlatforms = payload.bankLinkedPlatforms
-        mutationCount &+= 1
+        applyPayload(payload)
         migrateCurrentAccountKinds()
-        quantityTimeline = payload.quantityTimeline
-        hiddenNews = Set(payload.hiddenNews)
-        expenses = payload.expenses
-        creditCards = payload.creditCards
-        allocationTargets = payload.allocationTargets
-        themeID = payload.themeID
-        // A dizájnrendszer globálisan olvassa az aktív témát; a nézetek csak
-        // szerepeket kérnek, ezért itt elég egyszer beállítani.
-        DS.Color.theme = AppTheme.named(payload.themeID)
-        scenario = payload.scenario
-        lastRefresh = payload.lastRefresh
-        // Az utolsó ismert árakkal azonnal van mit mutatni, még a hálózat előtt.
-        fxRate = payload.fxRate
-        for holding in holdings {
-            if let price = payload.lastPrices[holding.isin] {
-                quotes[holding.isin] = Quote(isin: holding.isin, price: price,
-                                             changePercent: 0,
-                                             timestamp: payload.lastRefresh ?? .distantPast)
-            }
+    }
+
+    /// A folyamatban lévő, összevont mentés. Lásd `saveSoon()`.
+    @ObservationIgnored private var pendingSave: Task<Void, Never>?
+
+    /// Összevont mentés, 300 ms-os ablakkal.
+    ///
+    /// Az import-útvonalak régen fájlonként kétszer-háromszor mentettek (az
+    /// `apply*` a végén, majd a frissítés kör is), és minden mentés a
+    /// widgetet is felébresztette — N fájlnál 2N kódolás és 2N ébresztés.
+    /// Az összevonás után egy műveletsor EGY fájlírást és EGY widget-
+    /// ébresztést kap. A módosítás a memóriában azonnal érvényes — a
+    /// mutációszámláló itt lép, hogy a származtatott gyorsítótárak ne
+    /// válaszoljanak régi adatból —, csak a lemezre írás vár össze.
+    /// A kritikus pontok (kézi szerkesztés, beállítások) maradnak az
+    /// azonnali `save()`-en.
+    func saveSoon() {
+        mutationCount &+= 1
+        guard hasLoaded else { return }
+        guard pendingSave == nil else { return }
+        pendingSave = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(300))
+            guard let self, !Task.isCancelled else { return }
+            self.pendingSave = nil
+            self.save()
         }
     }
 
+    /// A függőben lévő összevont mentés azonnali kiírása. Háttérbe
+    /// kerüléskor hívjuk: a 300 ms-os ablakban megszakított app különben
+    /// elveszthetné az utolsó műveletsor eredményét.
+    func flushPendingSave() {
+        guard pendingSave != nil else { return }
+        save()
+    }
+
     func save() {
+        // Az azonnali mentés a függőben lévő összevontat is kiváltja —
+        // nem írunk kétszer ugyanazért.
+        pendingSave?.cancel()
+        pendingSave = nil
         mutationCount &+= 1
         // Soha nem írunk olyan állapotot, amit nem előztünk meg olvasással.
         // Ez az utolsó védvonal: ha bármelyik jövőbeli útvonal betöltés előtt
         // módosítana és mentene, itt megáll, ahelyett hogy kiürítené a fájlt.
         guard hasLoaded else { return }
 
-        var payload = PortfolioFile.Payload()
-        payload.holdings = holdings
-        payload.snapshots = snapshots
-        payload.deposits = deposits
-        payload.fees = fees
-        payload.platforms = platforms
-        payload.cashAssets = cashAssets
-        payload.cash = cash
-        payload.conversionSpread = conversionSpread
-        payload.tbszRules = tbszRules
-        payload.trades = trades
-        payload.platformOrder = platformOrder
-        payload.bankLinkedPlatforms = bankLinkedPlatforms
-        payload.quantityTimeline = quantityTimeline
-        payload.hiddenNews = Array(hiddenNews)
-        payload.expenses = expenses
-        payload.creditCards = creditCards
-        payload.allocationTargets = allocationTargets
-        payload.themeID = themeID
-        payload.scenario = scenario
-        payload.lastRefresh = lastRefresh
-        payload.fxRate = fxRate
-        payload.lastPrices = quotes.mapValues(\.price)
+        let payload = makePayload()
         let generation = mutationCount
         let encrypted = BackupSecurityManager.isEnabled
-        Task {
+        Task { [weak self] in
             let written = await PortfolioPersistenceWriter.shared.save(
                 payload, generation: generation, encrypted: encrypted
             )
             // A widget külön folyamat. Csak tényleges fájlírás után ébresztjük,
             // így nem olvashatja félúton a korábbi állapotot.
-            if written { WidgetCenter.shared.reloadAllTimelines() }
+            guard written else { return }
+            WidgetCenter.shared.reloadAllTimelines()
+
+            // The actor serialises iCloud writes. A newer remote revision is
+            // never overwritten: it is applied back to this store instead.
+            let result = await PortfolioCloudSyncWriter.shared.push(payload)
+            self?.handleCloudSyncResult(result)
         }
         // A summary csak aktív óra-kapcsolatnál épül fel.
         WatchBridge.shared.send { watchSummary }
+    }
+
+    private func handleCloudSyncResult(_ result: PortfolioCloudSync.PushResult) {
+        switch result {
+        case .written(let envelope):
+            lastCloudSync = envelope.updatedAt
+            cloudSyncError = nil
+        case .remoteNewer(let envelope):
+            applyPayload(envelope.payload)
+            PortfolioCloudSync.markPulled(envelope)
+            lastCloudSync = envelope.updatedAt
+            cloudSyncError = "Egy másik készülék újabb adata érkezett; azt tartottuk meg."
+            let generation = mutationCount
+            let encrypted = BackupSecurityManager.isEnabled
+            Task {
+                let written = await PortfolioPersistenceWriter.shared.save(
+                    envelope.payload, generation: generation, encrypted: encrypted
+                )
+                if written { WidgetCenter.shared.reloadAllTimelines() }
+            }
+        case .unavailable:
+            cloudSyncError = "Az iCloud szinkronizálás jelenleg nem érhető el."
+        case .failed(let message):
+            cloudSyncError = message
+        }
     }
 }

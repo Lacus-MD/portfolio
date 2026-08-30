@@ -47,24 +47,33 @@ actor ConstituentWatcher {
     /// mozdultakhoz kérünk címet. A napi mozgás viszont mindig látszik — a
     /// „hogyan alakulnak a részvények" kérdésre ez a válasz, és ehhez nem kell
     /// hírt hálózni.
+    ///
+    /// A `history` a hívótól jön (a store tárolt komponens-árai), a ma mért
+    /// árakat pedig visszaadjuk — az ÍRÁS a store dolga. Korábban itt volt
+    /// egy teljes fájl-betöltés és -visszaírás a hálózati kör két oldalán:
+    /// az a 10+ másodperces olvasás-módosítás-írás ablak megkerülte a
+    /// generációs védelmet, és felülírhatta az app közbeni mentéseit.
     func snapshot(of composition: FundComposition,
+                  history: [String: [String: Decimal]] = [:],
                   newsThreshold: Double = 3,
-                  newsLimit: Int = 3) async -> [ConstituentMove] {
+                  newsLimit: Int = 3) async -> (moves: [ConstituentMove],
+                                                measured: [String: Decimal]) {
         var found: [ConstituentMove] = []
-
-        // A ma mért árakat elmentjük, hogy a görbe napról napra épüljön.
-        var payload = PortfolioFile.load()
+        var measured: [String: Decimal] = [:]
         let today = Self.dayKey(Date())
 
         for slice in composition.top {
             guard let isin = slice.isin else { continue }
             guard let quote = try? await quotes.quote(isin: isin, ticker: slice.name) else { continue }
 
-            payload.constituentPrices[isin, default: [:]][today] = quote.price
-            let history = payload.constituentPrices[isin]?
+            measured[isin] = quote.price
+            // A mai mérést a kapott előzményhez fűzve épül a szikragörbe.
+            var days = history[isin] ?? [:]
+            days[today] = quote.price
+            let series = days
                 .sorted { $0.key < $1.key }
                 .suffix(60)
-                .map { $0.value.doubleValue } ?? []
+                .map { $0.value.doubleValue }
 
             found.append(ConstituentMove(name: slice.name,
                                          price: quote.price,
@@ -73,11 +82,8 @@ actor ConstituentWatcher {
                                          isin: isin,
                                          xetra: slice.xetra,
                                          ticker: slice.ticker,
-                                         history: history))
+                                         history: series))
         }
-        // Csak akkor írunk, ha volt mit mérni — üres kör ne nyúljon a fájlhoz.
-        if !found.isEmpty { PortfolioFile.save(payload) }
-
         // A legnagyobb HATÁSÚ elsőként — nem a legnagyobb százalék, hanem
         // amelyik a súlyával együtt tényleg mozdít az alapon.
         found.sort { abs($0.contributionPct) > abs($1.contributionPct) }
@@ -95,16 +101,24 @@ actor ConstituentWatcher {
             }
             asked += 1
         }
-        return found
+        return (found, measured)
     }
 
     /// Nap-kulcs a tároláshoz. Sztring, nem `Date`: így a JSON-szótár kulcsa
     /// stabil és emberi szemmel is olvasható marad.
-    static func dayKey(_ date: Date) -> String {
+    ///
+    /// A formázó EGYSZER épül fel — hívásonként új DateFormatter-t allokálni
+    /// az import- és görbe-utakon soronkénti munka volt. Konfigurálás után
+    /// csak olvassuk, így a párhuzamos használat is szálbiztos.
+    nonisolated(unsafe) private static let dayFormatter: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "yyyy-MM-dd"
-        return f.string(from: date)
+        return f
+    }()
+
+    static func dayKey(_ date: Date) -> String {
+        dayFormatter.string(from: date)
     }
 
     private func headline(for term: String) async -> (title: String, link: String)? {

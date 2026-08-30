@@ -73,9 +73,19 @@ enum Inbox {
             .url(forUbiquityContainerIdentifier: ubiquityContainerID) else { return nil }
         let documents = container.appending(path: "Documents", directoryHint: .isDirectory)
         try? FileManager.default.createDirectory(at: documents, withIntermediateDirectories: true)
-        placeReadme(in: documents)
+        // Az útmutató-fájl NEM itt jön létre: a getter mellékhatásaként
+        // minden elérésnél újraéledt, és a begyűjtéssel körbeérve a
+        // végtelenségig gyártotta a Feldolgozva-másolatokat.
         return documents
     }
+
+    /// Az útmutató-fájl neve — a begyűjtés név szerint zárja ki.
+    static let readmeName = "Ide dobd a kivonatokat.txt"
+
+    /// A portfólió több készülék közötti állapota külön fájlban él. Ezt a
+    /// begyűjtő soha nem kezeli kivonatként, még akkor sem, ha később bővülne
+    /// az elfogadott kiterjesztések listája.
+    static let portfolioSyncFileName = "portfolio-sync.json"
 
     /// Egy rövid útmutató a mappába.
     ///
@@ -85,7 +95,7 @@ enum Inbox {
     /// (A másik feltétel a build-szám növelése: az `NSUbiquitousContainers`
     /// beállítást az iOS gyorsítótárazza, és csak új verziónál olvassa újra.)
     private static func placeReadme(in documents: URL) {
-        let url = documents.appending(path: "Ide dobd a kivonatokat.txt")
+        let url = documents.appending(path: readmeName)
         guard !FileManager.default.fileExists(atPath: url.path) else { return }
         let text = """
         Portfólió — kivonatok mappája
@@ -112,8 +122,11 @@ enum Inbox {
     /// indításkor kerül sorra. Ez nem hiba, hanem az iCloud működése.
     @discardableResult
     static func collectFromCloud() -> Int {
-        guard let documents = cloudDocuments,
-              let items = try? FileManager.default.contentsOfDirectory(
+        guard let documents = cloudDocuments else { return 0 }
+        // Az útmutató egyetlen, kiszámítható helyen jön létre: a begyűjtés
+        // elején. Enélkül a mappa üresen meg sem jelenne a Fájlok appban.
+        placeReadme(in: documents)
+        guard let items = try? FileManager.default.contentsOfDirectory(
                 at: documents,
                 includingPropertiesForKeys: [.ubiquitousItemDownloadingStatusKey],
                 options: [.skipsHiddenFiles]
@@ -125,6 +138,16 @@ enum Inbox {
         let accepted = ["csv", "pdf", "txt", "xml"]
         var moved = 0
         for url in items where accepted.contains(url.pathExtension.lowercased()) {
+            let name = url.lastPathComponent
+            guard name != portfolioSyncFileName else { continue }
+            // A saját útmutatónk nem kivonat. Korábban a txt kiterjesztés
+            // miatt ezt is elvittük, a getter újra létrehozta, és a kör
+            // Feldolgozva/-2, -3, … fájlokat gyártott korlátlanul.
+            guard name != readmeName else { continue }
+            // TXT-nél a kivonat-mintát is megköveteljük: txt-ben csak az
+            // Államkincstár-export érkezik, minden más txt jegyzet vagy
+            // útmutató — azt nem visszük el.
+            if url.pathExtension.lowercased() == "txt", !looksLikeStatement(name) { continue }
             let status = try? url.resourceValues(forKeys: [.ubiquitousItemDownloadingStatusKey])
                 .ubiquitousItemDownloadingStatus
             if status == .notDownloaded {
@@ -180,9 +203,12 @@ enum Inbox {
         let normalized = name.lowercased().folding(
             options: [.diacriticInsensitive, .caseInsensitive], locale: .current
         )
+        // A minták a MÁR NORMALIZÁLT (kisbetűs, ékezettelen) szövegre
+        // illeszkednek — nagybetűs-ékezetes mintával az OTP-kivonatokat
+        // soha nem ismertük volna fel.
         let patterns = [
-            "^Bankszámlakivonat_",           // OTP bankszámla
-            "^Hitelkártya számlakivonat_",   // OTP hitelkártya
+            "^bankszamlakivonat_",           // OTP bankszámla
+            "^hitelkartya szamlakivonat_",   // OTP hitelkártya
             "^savings-statement_",           // Revolut megtakarítás
             "^account-statement_",           // Revolut folyószámla
             "^accountstatement-ly-",         // Lightyear

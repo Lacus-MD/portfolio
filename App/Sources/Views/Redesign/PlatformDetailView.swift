@@ -25,24 +25,37 @@ struct PlatformDetailView: View {
         store.cashAssets.filter { $0.platform == summary.platform.id }
     }
 
+    /// A tartozás kézi átírása — csak hitelkártyánál jelenik meg.
+    @State private var editingDebt = false
+    @State private var debtText = ""
+
     var body: some View {
         // EGYETLEN görgethető oszlop. Korábban az alsó lap fix panel volt a
         // ZStack alján — a handoffban pár sor fért bele, de azóta idekerült az
         // eszközlista, az összetétel-gyűrű, a TBSZ-kalkulátor és a díjak.
         // Fix panelként ez nem görgethető és tömör: a tartalom egyszerűen
         // kifutott a képernyőből.
-        ScrollView {
+        // Egy menet — egy számítás: a platform napi sorozata korábban
+        // menetenként négyszer épült fel (mind teljes snapshot-bejárással),
+        // a követett napok száma háromszor, az XIRR kétszer futott le.
+        let series = self.series
+        let tracked = store.trackedDays(ofPlatform: summary.platform.id)
+        return ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 VStack(alignment: .leading, spacing: 20) {
                     header
-                    statPair
-                    shortHistoryNote
-                    chart
+                    statPair(tracked: tracked)
+                    shortHistoryNote(tracked: tracked)
+                    chart(series)
                     RangeChips(selection: $range, tint: platformTint, onTint: onTint,
                                ink: DS.Color.onShell())
                 }
                 .padding(.horizontal, 22)
                 .padding(.top, DS.topPadding)
+
+                if summary.platform.isLiability {
+                    debtSection
+                }
 
                 sheet
             }
@@ -55,6 +68,62 @@ struct PlatformDetailView: View {
         .foregroundStyle(DS.Color.onShell())
         .toolbar(.hidden, for: .navigationBar)
         .sheet(item: $inspecting) { ConstituentDetailView(move: $0) }
+    }
+
+    // MARK: - Tartozás kézi átírása
+
+    /// A kivonat havonta egyszer jön; aki közben visszafizetett, annak az
+    /// app hetekig a régi tartozást mutatná. Itt átírható — a mai nappal
+    /// kerül be, és csak egy ENNÉL frissebb kivonat írja felül.
+    @ViewBuilder private var debtSection: some View {
+        let card = store.creditCards.first { $0.platform == summary.platform.id }
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Tartozás").font(DS.section)
+                Spacer()
+                if let asOf = card?.asOf {
+                    Text("eddig: \(Fmt.day(asOf))")
+                        .font(DS.font(11, .regular))
+                        .foregroundStyle(DS.Color.onPlum(0.45))
+                }
+            }
+            Button {
+                debtText = Fmt.decimal(abs(summary.valueHUF), max: 0)
+                    .replacingOccurrences(of: "\u{00a0}", with: "")
+                editingDebt = true
+            } label: {
+                HStack {
+                    Image(systemName: "pencil")
+                    Text("Aktuális tartozás átírása")
+                    Spacer()
+                    Text(Fmt.huf(abs(summary.valueHUF)))
+                        .monospacedDigit()
+                        .foregroundStyle(DS.Color.onPlum(0.6))
+                }
+                .font(DS.rowTitle)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 13)
+                .background(DS.Color.onPlum(0.08), in: .rect(cornerRadius: 14))
+            }
+            .buttonStyle(.plain)
+            Text("Ha visszafizettél a kivonat óta, írd át — a következő, ennél frissebb kivonat magától felülírja.")
+                .font(DS.font(11, .regular))
+                .foregroundStyle(DS.Color.onPlum(0.45))
+        }
+        .padding(.horizontal, 22)
+        .alert("Aktuális tartozás", isPresented: $editingDebt) {
+            TextField("Összeg forintban", text: $debtText)
+                .keyboardType(.numberPad)
+            Button("Mentés") {
+                let cleaned = debtText.filter { $0.isNumber }
+                if let value = Decimal(string: cleaned) {
+                    store.setCreditCardDebt(platform: summary.platform.id, debt: value)
+                }
+            }
+            Button("Mégse", role: .cancel) { }
+        } message: {
+            Text("Add meg, mennyi a tartozás MOST. A minimum-fizetendő és a határidő a kivonatból jön, azokhoz nem nyúlok.")
+        }
     }
 
     // MARK: - Fejléc
@@ -90,8 +159,11 @@ struct PlatformDetailView: View {
         return ("\(days) nap", "befizetésig")
     }
 
-    private var statPair: some View {
-        HStack(alignment: .top, spacing: 38) {
+    private func statPair(tracked: Int?) -> some View {
+        // Az évesített hozamot EGYSZER számoljuk (az XIRR iteratív), és a
+        // címke meg az érték ugyanabból dolgozik.
+        let annualised = annualised(tracked: tracked)
+        return HStack(alignment: .top, spacing: 38) {
             VStack(alignment: .leading, spacing: 3) {
                 Text("Befizetés").font(DS.font(11.5, .regular))
                     .foregroundStyle(DS.Color.onPlum(0.55))
@@ -122,9 +194,8 @@ struct PlatformDetailView: View {
     /// Befizetés-súlyozott éves hozam. Rövid előzménynél nem mutatjuk
     /// évesítve — pár hét ingadozását az évesítés sokszorosára nagyítja,
     /// és ezt a figyelmeztetést a handoff is megtartandónak jelöli.
-    private var annualised: Double? {
-        guard let days = store.trackedDays(ofPlatform: summary.platform.id),
-              days >= 180 else { return nil }
+    private func annualised(tracked: Int?) -> Double? {
+        guard let days = tracked, days >= 180 else { return nil }
         return store.xirr(ofPlatform: summary.platform.id)
     }
 
@@ -132,8 +203,8 @@ struct PlatformDetailView: View {
     /// „kezdetektől" mért százalék önmagában értelmes szám — nem kell
     /// mentegetni. Korábban 173 napnál is azt írta ki, hogy „csak", és arról
     /// beszélt, ami NINCS (évesítés), ahelyett hogy megmondta volna, mi VAN.
-    @ViewBuilder private var shortHistoryNote: some View {
-        if let days = store.trackedDays(ofPlatform: summary.platform.id), days < 90 {
+    @ViewBuilder private func shortHistoryNote(tracked: Int?) -> some View {
+        if let days = tracked, days < 90 {
             HStack(alignment: .top, spacing: 6) {
                 Image(systemName: "info.circle").font(.system(size: 10))
                 Text("\(days) nap előzmény. Ilyen rövid szakaszon a százalék még sokat ugrálhat.")
@@ -158,12 +229,12 @@ struct PlatformDetailView: View {
         return all.filter { $0.0 >= cutoff }
     }
 
-    @ViewBuilder private var chart: some View {
+    @ViewBuilder private func chart(_ series: [(date: Date, value: Double)]) -> some View {
         if series.count >= 2 {
             let values = series.map(\.value)
             let chart = AreaChart(points: values, tint: platformTint,
                                   valueTag: Fmt.huf(summary.valueHUF),
-                                  markers: tradeMarkers,
+                                  markers: tradeMarkers(for: series),
                                   dates: series.map(\.date))
             VStack(alignment: .leading, spacing: 6) {
                 chart
@@ -359,7 +430,7 @@ struct PlatformDetailView: View {
     }
 
     /// A görbe melyik pontjára esik vétel vagy eladás.
-    private var tradeMarkers: [Int: TradeMarker.Kind] {
+    private func tradeMarkers(for series: [(date: Date, value: Double)]) -> [Int: TradeMarker.Kind] {
         let days = series.map { ConstituentWatcher.dayKey($0.date) }
         var result: [Int: TradeMarker.Kind] = [:]
         for trade in store.trades where trade.platform == summary.platform.id {
@@ -387,7 +458,11 @@ struct PlatformDetailView: View {
             }
             .task {
                 // Csak akkor hálózunk hírért, ha valami tényleg nagyot mozdult.
-                movers = await ConstituentWatcher().snapshot(of: known)
+                let result = await ConstituentWatcher().snapshot(of: known,
+                                                                 history: store.constituentPrices)
+                // A mérést a store menti el — a watcher nem ír fájlt (lásd ott).
+                store.recordConstituentPrices(result.measured)
+                movers = result.moves
             }
         }
     }

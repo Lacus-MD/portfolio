@@ -1,6 +1,6 @@
-# Portfolio 1.0 Release Candidate checklist — Build 28
+# Portfolio 1.0 Release Candidate checklist — Build 29
 
-This checklist is the no-device verification path for Build 28. It is safe to
+This checklist is the no-device verification path for Build 29. It is safe to
 run without bank credentials, signing secrets, or a connected phone.
 
 - [x] XcodeGen regenerated `Portfolio.xcodeproj` from `project.yml`.
@@ -9,12 +9,18 @@ run without bank credentials, signing secrets, or a connected phone.
   compile in the Release configuration with signing disabled for this
   no-device pass.
 - [x] Build number is read from the generated app bundle Info.plist.
+- [x] iCloud sync envelope round-trip and revision conflict tests compile in
+  the iPhoneOS unit-test target.
+- [x] The app pulls remote portfolio revisions on startup/foreground and
+  publishes successful local saves to the existing iCloud Documents container.
 - [x] `git diff --check` passes.
 - [x] Importer fixtures contain no personal or bank data.
 - [ ] Runtime unit/UI tests — deferred because CoreSimulatorService cannot
   provide a simulator in this environment; the unit-test target compiles.
 - [ ] Physical iPhone installation and smoke test — deferred because the
   configured device is unavailable.
+- [ ] Cross-device iCloud runtime sync — deferred until two signed Apple
+  devices are available; the build has no live iCloud credentials in tests.
 - [ ] Five-to-seven-day TestFlight observation — deferred until a device and
   App Store Connect upload are available.
 

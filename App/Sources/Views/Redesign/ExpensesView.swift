@@ -9,6 +9,7 @@ import SwiftUI
 /// vagyonként a Portfólió fülön.
 struct ExpensesView: View {
     @Environment(PortfolioStore.self) private var store
+    @Environment(EnableBankingService.self) private var banking
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     @State private var month: Date = Calendar.current.startOfMonth(for: Date())
@@ -38,29 +39,36 @@ struct ExpensesView: View {
             .sorted { $0.total > $1.total }
     }
 
-    private var spending: Decimal {
-        byCategory.filter(\.category.isSpending).reduce(Decimal(0)) { $0 + $1.total }
-    }
-    private var moved: Decimal {
-        byCategory.filter { !$0.category.isSpending }.reduce(Decimal(0)) { $0 + $1.total }
-    }
-
     var body: some View {
+        // Egy menet — egy számítás. Ezek korábban számított tulajdonságok
+        // voltak, és a body minden hivatkozásnál újraszámolta őket: a
+        // byCategory kategóriánként ~10-szer épült újra, a hónap-elemzés és
+        // az ismétlődő terhelések menetenként többször futottak, a számla-
+        // név pedig soronként a teljes platformlistát oldotta fel.
+        let byCategory = self.byCategory
+        let spending = byCategory.filter(\.category.isSpending)
+            .reduce(Decimal(0)) { $0 + $1.total }
+        let moved = byCategory.filter { !$0.category.isSpending }
+            .reduce(Decimal(0)) { $0 + $1.total }
+        let thisMonth = self.thisMonth
+        let recurring = SpendingAnalysis.recurring(store.expenses)
+        let names = Dictionary(store.resolvedPlatforms.map { ($0.id, $0.name) },
+                               uniquingKeysWith: { first, _ in first })
         NavigationStack {
             VStack(spacing: 0) {
                 header
                 ScrollView(.vertical) {
                     VStack(alignment: .leading, spacing: 22) {
-                        if entries.isEmpty {
+                        if byCategory.isEmpty {
                             emptyState
                         } else {
                             importReminder
                             cardDue
-                            summary
-                            fixedVsVariable
-                            recurringCard
-                            breakdown
-                            movedSection
+                            summary(spending: spending, moved: moved)
+                            fixedVsVariable(thisMonth)
+                            recurringCard(recurring)
+                            breakdown(byCategory, spending: spending, names: names)
+                            movedSection(byCategory, names: names)
                             footnote
                         }
                     }
@@ -78,6 +86,14 @@ struct ExpensesView: View {
                 // képernyő széléig. Ha vízszintesen nincs túlméretes tartalom,
                 // a basedOnSize teljesen letiltja ezt a bounce-ot.
                 .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+                // Lehúzásra a kivonat-források újraolvasása: a figyelt mappák,
+                // az iCloud-postaláda és — ha összekötve — a bankok is.
+                .pullRefresh(tint: DS.Color.coral) {
+                    _ = await store.startup()
+                    if banking.isConfigured && banking.isConnected {
+                        await banking.sync(store: store)
+                    }
+                }
             }
             .background(DS.Color.canvas)
             .foregroundStyle(DS.Color.ink)
@@ -146,7 +162,7 @@ struct ExpensesView: View {
 
     // MARK: - Összegzés
 
-    private var summary: some View {
+    private func summary(spending: Decimal, moved: Decimal) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("EBBEN A HÓNAPBAN ELKÖLTVE")
                 .font(DS.font(10, .semibold)).tracking(1.0)
@@ -170,27 +186,37 @@ struct ExpensesView: View {
 
     // MARK: - Bontás
 
-    private var breakdown: some View {
+    private func breakdown(_ byCategory: [(category: ExpenseCategory, total: Decimal,
+                                            items: [ExpenseEntry])],
+                           spending: Decimal, names: [String: String]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             sectionLabel("MIRE MENT EL")
             ForEach(byCategory.filter(\.category.isSpending), id: \.category) { group in
-                categoryRow(group)
+                categoryRow(group, spending: spending, names: names)
             }
         }
     }
 
-    @ViewBuilder private var movedSection: some View {
+    @ViewBuilder private func movedSection(
+        _ byCategory: [(category: ExpenseCategory, total: Decimal, items: [ExpenseEntry])],
+        names: [String: String]
+    ) -> some View {
         let other = byCategory.filter { !$0.category.isSpending }
         if !other.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 sectionLabel("NEM KÖLTÉS — SAJÁT SZÁMLÁRA")
-                ForEach(other, id: \.category) { categoryRow($0) }
+                // A nem-költés csoportnál nincs arány-sáv (a sor csak
+                // költés-kategóriánál rajzol), ezért az arány alapja nulla.
+                ForEach(other, id: \.category) {
+                    categoryRow($0, spending: 0, names: names)
+                }
             }
         }
     }
 
     private func categoryRow(_ group: (category: ExpenseCategory, total: Decimal,
-                                       items: [ExpenseEntry])) -> some View {
+                                       items: [ExpenseEntry]),
+                             spending: Decimal, names: [String: String]) -> some View {
         let open = expanded == group.category
         let share = spending > 0 && group.category.isSpending
             ? (group.total / spending).doubleValue : 0
@@ -239,14 +265,14 @@ struct ExpensesView: View {
             }
             .buttonStyle(.plain)
 
-            if open { items(group.items) }
+            if open { items(group.items, names: names) }
         }
         .pastelCardBackground(in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(DS.Color.inkSoft(0.075)))
         .foregroundStyle(DS.Color.ink)
     }
 
-    private func items(_ list: [ExpenseEntry]) -> some View {
+    private func items(_ list: [ExpenseEntry], names: [String: String]) -> some View {
         VStack(spacing: 0) {
             Rectangle().fill(DS.Color.inkSoft(0.075)).frame(height: 1)
             ForEach(list.prefix(25)) { entry in
@@ -255,7 +281,7 @@ struct ExpensesView: View {
                         Text(entry.merchant)
                             .font(DS.font(13, .medium))
                             .lineLimit(1)
-                        Text("\(Fmt.day(entry.date)) · \(accountName(entry.account))")
+                        Text("\(Fmt.day(entry.date)) · \(names[entry.account] ?? entry.account)")
                             .font(DS.meta).foregroundStyle(DS.Color.inkSoft(0.4))
                     }
                     Spacer(minLength: 6)
@@ -283,10 +309,6 @@ struct ExpensesView: View {
         .transition(.opacity)
     }
 
-    private func accountName(_ id: String) -> String {
-        store.resolvedPlatforms.first { $0.id == id }?.name ?? id
-    }
-
     private func sectionLabel(_ text: String) -> some View {
         Text(text)
             .font(DS.font(10, .semibold)).tracking(1.0)
@@ -305,7 +327,7 @@ struct ExpensesView: View {
     /// A fix rész (törlesztés, rezsi, biztosítás, előfizetés, banki díj)
     /// akkor is elmegy, ha egy hónapig ki sem lépsz a lakásból. A változó
     /// az, amiről tényleg te döntesz.
-    @ViewBuilder private var fixedVsVariable: some View {
+    @ViewBuilder private func fixedVsVariable(_ thisMonth: SpendingAnalysis.Month?) -> some View {
         if let month = thisMonth, month.spending > 0 {
             let fixedShare = (month.fixed / month.spending).doubleValue
             VStack(alignment: .leading, spacing: 0) {
@@ -357,9 +379,12 @@ struct ExpensesView: View {
 
     /// Hány hónap fix költséget fedez a vagyonod.
     @ViewBuilder private func runway(_ month: SpendingAnalysis.Month) -> some View {
-        if month.fixed > 0, store.grandTotalHUF > 0 {
-            let months = (store.grandTotalHUF / month.fixed).doubleValue
-            let liquid = store.grandTotalHUF - store.securitiesValueHUF
+        // A két vagyon-szám a gyorsítótárazott összesítőkből jön, és
+        // egyszer olvassuk ki — nem soronként újraszámolva.
+        let total = store.grandTotalHUF
+        if month.fixed > 0, total > 0 {
+            let months = (total / month.fixed).doubleValue
+            let liquid = total - store.securitiesValueHUF
             Divider().padding(.vertical, 11)
             VStack(alignment: .leading, spacing: 3) {
                 Text("A vagyonod \(Fmt.decimal(Decimal(months), max: 1)) hónap fix költséget fedez")
@@ -378,12 +403,7 @@ struct ExpensesView: View {
 
     // MARK: - Előfizetések
 
-    private var recurring: [SpendingAnalysis.Recurring] {
-        SpendingAnalysis.recurring(store.expenses)
-    }
-
-    @ViewBuilder private var recurringCard: some View {
-        let items = recurring
+    @ViewBuilder private func recurringCard(_ items: [SpendingAnalysis.Recurring]) -> some View {
         if !items.isEmpty {
             let yearly = items.reduce(Decimal(0)) { $0 + $1.yearly }
             Button { withAnimation(.easeOut(duration: 0.2)) { showRecurring.toggle() } } label: {

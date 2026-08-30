@@ -122,7 +122,10 @@ struct PortfolioEntry: TimelineEntry {
     /// az nem megy (repülőgép mód, rate limit, lejárt widget-büdzsé), akkor az
     /// app által utoljára mentett árakkal számol — de `isLive = false` jelzéssel,
     /// hogy a widget ne tegyen úgy, mintha friss adatot mutatna.
-    static func make() async -> PortfolioEntry {
+    ///
+    /// - Parameter writeSnapshot: hamissal CSAK olvas — az előnézet is ezen a
+    ///   kódúton jár, és mérést írnia nem szabad.
+    static func make(writeSnapshot: Bool = true) async -> PortfolioEntry {
         let payload = PortfolioFile.load()
         let theme = AppTheme.named(payload.themeID)
         let hasFinancialData = !payload.holdings.isEmpty
@@ -138,15 +141,36 @@ struct PortfolioEntry: TimelineEntry {
         var fx = payload.fxRate
         var isLive = true
 
+        // Az árfolyamok PÁRHUZAMOSAN — ugyanaz a minta, mint az app
+        // `performRefresh`-e. A soros ciklus papíronként várta végig a
+        // hálózatot, és a widget szűk futásideje simán el is fogyhatott.
         let quoteService = QuoteService()
-        for holding in payload.holdings {
-            if let quote = try? await quoteService.quote(isin: holding.isin, ticker: holding.ticker) {
-                prices[holding.isin] = quote.price
+        let requests = payload.holdings.map { (isin: $0.isin, ticker: $0.ticker) }
+        async let fxRate: Decimal? = try? await FXService().currentRate()
+        let fetched = await withTaskGroup(
+            of: (isin: String, price: Decimal?).self,
+            returning: [(isin: String, price: Decimal?)].self
+        ) { group in
+            for request in requests {
+                group.addTask {
+                    let quote = try? await quoteService.quote(isin: request.isin,
+                                                              ticker: request.ticker)
+                    return (request.isin, quote?.price)
+                }
+            }
+            var result: [(isin: String, price: Decimal?)] = []
+            result.reserveCapacity(requests.count)
+            for await item in group { result.append(item) }
+            return result
+        }
+        for item in fetched {
+            if let price = item.price {
+                prices[item.isin] = price
             } else {
                 isLive = false
             }
         }
-        if let rate = try? await FXService().currentRate() { fx = rate } else { isLive = false }
+        if let rate = await fxRate { fx = rate } else { isLive = false }
 
         // Hiányzó ár esetén inkább a mentett állapotot mutatjuk, mint egy
         // hiányos — tehát hamisan alacsony — összeget.
@@ -226,10 +250,8 @@ struct PortfolioEntry: TimelineEntry {
 
         // A widget MENTI is a napi mérést, nem csak megjeleníti.
         // Enélkül a görbe csak akkor nőne, ha megnyitod az appot — márpedig a
-        // widget épp azért van, hogy ne kelljen. A betöltött `payload`-ot
-        // módosítjuk, nem újat építünk, hogy a pozíciók és a befizetések
-        // ne vesszenek el egy párhuzamos írásban.
-        if isLive {
+        // widget épp azért van, hogy ne kelljen.
+        if isLive && writeSnapshot {
             // FRISSEN újraolvasunk közvetlenül írás előtt. A `payload`-ot a
             // hálózati hívások ELŐTT töltöttük be — az azóta eltelt másodpercekben
             // az app is írhatott (kivonat-import, pozíció törlése). A régi
@@ -240,19 +262,25 @@ struct PortfolioEntry: TimelineEntry {
             // egy pillanatképet olyan pozíciókból, amiket a felhasználó törölt.
             guard !updated.holdings.isEmpty else { return entry }
 
-            updated.snapshots.removeAll { Calendar.current.isDate($0.date, inSameDayAs: today) }
-            // A PLATFORMBONTÁS is bekerül. Enélkül a widget minden frissítéskor
-            // egy bontás nélküli sorral írta felül a mai mérést, és a
-            // kezdőképernyő közös görbéjéről aznapra eltűntek a vonalak —
-            // pont azokon a napokon, amikor nem nyitottad meg az appot.
-            updated.snapshots.append(Snapshot(date: today, valueEUR: total, costEUR: cost,
-                                              fxRate: fx, isBackfilled: false,
-                                              byPlatform: perPlatform))
-            updated.snapshots.sort { $0.date < $1.date }
-            updated.fxRate = fx
-            updated.lastPrices = prices
-            updated.lastRefresh = Date()
-            PortfolioFile.save(updated)
+            // Napi EGY mérés elég: ha mára már van bejegyzés (az apptól vagy
+            // egy korábbi widget-körtől), nem írjuk újra óránként ugyanazt —
+            // az minden órában teljes fájlírás volt a semmiért.
+            if !updated.snapshots.contains(where: {
+                Calendar.current.isDate($0.date, inSameDayAs: today)
+            }) {
+                // A PLATFORMBONTÁS is bekerül. Enélkül a widget egy bontás
+                // nélküli sorral mérte a mai napot, és a kezdőképernyő közös
+                // görbéjéről aznapra eltűntek a vonalak — pont azokon a
+                // napokon, amikor nem nyitottad meg az appot.
+                updated.snapshots.append(Snapshot(date: today, valueEUR: total, costEUR: cost,
+                                                  fxRate: fx, isBackfilled: false,
+                                                  byPlatform: perPlatform))
+                updated.snapshots.sort { $0.date < $1.date }
+                updated.fxRate = fx
+                updated.lastPrices = prices
+                updated.lastRefresh = Date()
+                PortfolioFile.save(updated)
+            }
         }
 
         // A görbe ugyanabból a sorozatból, mint a kezdőképernyőé: napi

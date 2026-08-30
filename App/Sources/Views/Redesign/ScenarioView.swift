@@ -19,6 +19,12 @@ struct ScenarioView: View {
         return Decimal(string: cleaned, locale: Locale(identifier: "en_US_POSIX")) ?? 0
     }
 
+    /// A képernyő aktuális feltevés-hármasa — a mentés-debounce kulcsa.
+    private var draft: Scenario {
+        Scenario(annualReturnPct: annualReturn, monthlyHUF: parsedMonthly,
+                 targetDate: target)
+    }
+
     private var result: ScenarioResult {
         ScenarioCalculator.project(
             currentHUF: store.grandTotalHUF,
@@ -53,11 +59,21 @@ struct ScenarioView: View {
         // A feltevések MENTÉSE nem külön gomb dolga — de nem is a
         // `.onDisappear`-é: kimértem, hogy a natív vissza-gesztussal
         // kilépve nem futott le, és a beállításaid nyom nélkül elvesztek
-        // (a tárolt állományban meg sem jelent a kulcs). Minden változásnál
-        // mentünk; ez néhány apró írás, cserébe nincs mit elveszíteni.
-        .onChange(of: annualReturn) { persist() }
-        .onChange(of: monthly) { persist() }
-        .onChange(of: target) { persist() }
+        // (a tárolt állományban meg sem jelent a kulcs). Változásra mentünk,
+        // de fél másodperc szünettel: a korábbi leütésenkénti mentés minden
+        // karakterre teljes fájl-kódolás és widget-ébresztés volt. A
+        // .task(id:) az előző várakozót elnyeli; az onDisappear tartalék —
+        // ha mégis lefut, a debounce-ablakban rekedt utolsó leütést menti.
+        .task(id: draft) {
+            guard loaded else { return }
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            persist()
+        }
+        .onDisappear {
+            guard loaded, store.scenario != draft else { return }
+            persist()
+        }
         .tint(DS.Color.coral)
         .onAppear {
             let saved = store.scenario

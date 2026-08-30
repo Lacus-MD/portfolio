@@ -40,7 +40,14 @@ enum SpendingAnalysis {
             var income: Decimal = 0, fixed: Decimal = 0
             var variable: Decimal = 0, moved: Decimal = 0
             for item in items {
-                if item.amountHUF > 0 { income += item.amountHUF }
+                if item.amountHUF > 0 {
+                    // A pozitív tétel sem mind bevétel: a saját számláról
+                    // visszaérkező átvezetés vagy a törlesztés jóváírása
+                    // mozgatott pénz — előjelhelyesen a moved-ot csökkenti,
+                    // nem a bevételt hizlalja.
+                    if item.category.isSpending { income += item.amountHUF }
+                    else { moved -= item.amountHUF }
+                }
                 else if !item.category.isSpending { moved += item.magnitude }
                 else if item.category.isFixed { fixed += item.magnitude }
                 else { variable += item.magnitude }

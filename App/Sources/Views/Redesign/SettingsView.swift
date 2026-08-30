@@ -42,6 +42,8 @@ struct SettingsView: View {
 
                 notificationSection
 
+                cloudSyncSection
+
                 dataSection
 
                 developerToolsSection
@@ -259,6 +261,26 @@ struct SettingsView: View {
             + "Ezek frissítéskor szólnak; a banki gyakoriságot a Bankkapcsolatnál állíthatod. "
             + "Az emlékeztetők: kártya −3 nap, kivonat minden hónap \(statementDay)-én, "
             + "engedély −\(consentLeadDays) nap, reggel 9-kor."
+    }
+
+    @ViewBuilder
+    private var cloudSyncSection: some View {
+        Section {
+            LabeledContent("Állapot", value: store.cloudSyncStatus)
+            if let date = store.lastCloudSync {
+                LabeledContent("Legutóbbi szinkron", value: "\(Fmt.day(date)) · \(Fmt.time(date))")
+            }
+            Button {
+                Task { await store.startup() }
+            } label: {
+                Label("Szinkronizálás most", systemImage: "arrow.triangle.2.circlepath.icloud")
+            }
+            .disabled(store.isRefreshing)
+        } header: {
+            Text("iCloud szinkronizálás")
+        } footer: {
+            Text("A platformok, egyenlegek, tranzakciók és téma-beállítások automatikusan szinkronizálódnak az Apple-eszközeid között. A banki belépési adatok és jóváhagyások csak a készülék Keychainjében maradnak.")
+        }
     }
 
     private var deletingPlatformTitle: String {

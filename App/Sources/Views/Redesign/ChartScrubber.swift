@@ -94,14 +94,28 @@ extension View {
     /// görgetéssel, és van egy előnye is: nem kell nyomva tartani ahhoz,
     /// hogy elolvasd, mennyi volt az aznapi érték.
     func scrubbable(width: CGFloat, fraction: Binding<Double?>) -> some View {
-        contentShape(.rect)
+        modifier(Scrubbable(width: width, fraction: fraction))
+    }
+}
+
+/// A koppintás/húzás páros egy módosítóban — a húzás kezdőidejéhez saját
+/// állapot kell, azt egy sima View-kiterjesztés nem tud tartani.
+private struct Scrubbable: ViewModifier {
+    let width: CGFloat
+    @Binding var fraction: Double?
+    /// Mikor ért le az ujj — ebből dől el, hogy koppintás volt-e.
+    @State private var dragStart: Date?
+
+    func body(content: Content) -> some View {
+        content
+            .contentShape(.rect)
             .onTapGesture { location in
                 guard width > 0 else { return }
                 let value = min(max(location.x / width, 0), 1)
-                if fraction.wrappedValue != nil {
-                    fraction.wrappedValue = nil
+                if fraction != nil {
+                    fraction = nil
                 } else {
-                    fraction.wrappedValue = value
+                    fraction = value
                 }
             }
             // A sáv HÚZHATÓ, de csak amíg látszik.
@@ -116,9 +130,23 @@ extension View {
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in
                         guard width > 0 else { return }
-                        fraction.wrappedValue = min(max(value.location.x / width, 0), 1)
+                        if dragStart == nil { dragStart = Date() }
+                        fraction = min(max(value.location.x / width, 0), 1)
+                    }
+                    .onEnded { value in
+                        // Látható sávnál a nulla küszöbű drag a koppintást is
+                        // elnyelte, ezért az onTapGesture eltüntető ága sosem
+                        // futott le — a sávot nem lehetett becsukni. A rövid,
+                        // alig mozduló érintés koppintás: itt zárjuk be.
+                        let still = abs(value.translation.width) < 6
+                            && abs(value.translation.height) < 6
+                        let brief = dragStart.map {
+                            Date().timeIntervalSince($0) < 0.3
+                        } ?? false
+                        dragStart = nil
+                        if still, brief { fraction = nil }
                     },
-                including: fraction.wrappedValue == nil ? .none : .all
+                including: fraction == nil ? .none : .all
             )
     }
 }
