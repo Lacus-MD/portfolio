@@ -160,7 +160,8 @@ enum PortfolioCloudSync {
 
     private static func decodeEnvelope(_ data: Data) throws -> Envelope {
         let envelope = try JSONDecoder().decode(Envelope.self, from: data)
-        guard envelope.schemaVersion <= PortfolioFile.currentSchemaVersion else {
+        guard envelope.schemaVersion <= PortfolioFile.currentSchemaVersion,
+              envelope.payload.schemaVersion <= PortfolioFile.currentSchemaVersion else {
             throw NSError(domain: "PortfolioCloudSync", code: 1, userInfo: [
                 NSLocalizedDescriptionKey: "Unsupported portfolio sync schema version"
             ])
