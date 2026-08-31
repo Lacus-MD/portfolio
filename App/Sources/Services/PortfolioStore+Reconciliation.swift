@@ -54,22 +54,6 @@ extension PortfolioStore {
                 details.append("nincs teljes HUF bekerülési érték")
             }
 
-            // A Lightyear importból mért díj történeti költség. Ha ezt az
-            // arányt élő értéklevonásként is használjuk, az app és a bróker
-            // száma eltérhet; ezt a felületnek expliciten jeleznie kell.
-            if summary.platform.kind == .brokerage,
-               let spread = conversionSpread[id], spread > 0.00001 {
-                let issue = ReconciliationIssue(
-                    id: "platform.historical-fee.\(id)",
-                    severity: .warning,
-                    title: "Történeti átváltási díj levonása: \(summary.platform.name)",
-                    detail: String(format: "A korábbi konverziós díj %.2f%%-os aránya az élő értékelésben is levonódik. Ez magyarázhatja a szolgáltatói értéktől való eltérést.", spread.doubleValue * 100)
-                )
-                issues.append(issue)
-                rowSeverity = max(rowSeverity, issue.severity)
-                details.append("történeti díj szerepel az értékelésben")
-            }
-
             for holding in ownHoldings where holding.quantity > 1_000_000 {
                 let issue = ReconciliationIssue(
                     id: "holding.suspicious-quantity.\(holding.id.uuidString)",

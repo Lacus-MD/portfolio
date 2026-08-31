@@ -118,30 +118,23 @@ felesleges kockázat lenne.
 
 ## Miért egyeznek a számok a Lightyearrel
 
-A fő szám (`netValueHUF`) szándékosan **nem** a nyers piaci érték, hanem az,
-amit visszaváltáskor ténylegesen kapnál:
+A fő szám (`netValueHUF`) a szolgáltatói számlanézet aktuális értékét követi:
 
 ```
-netValueHUF = darab × ár × EUR/HUF × (1 − átváltási_árrés) + készpénz
+netValueHUF = darab × aktuális ár × EUR/HUF + készpénz
 Kezdetektől = netValueHUF − összes_befizetés
 ```
 
-Három mérés vezetett ide, mindegyik a tulajdonos valódi kivonatán:
+Az importból mért conversion spread történeti díj. A korábbi változat ezt a
+0,3498%-os arányt minden élő pozícióból levonta, ezért a Lightyear 1 013 196 Ft-os
+számlaértéke helyett 1 010 034 Ft jelent meg — ugyanaz a 3 162 Ft eltérés, amit
+a díj mesterségesen okozott. Az új számítás ezt nem vonja le a fő értékből;
+a `realizableValueHUF` külön, tájékoztató becslésként őrzi meg a „ha most
+eladnám és forintra váltanám” nézetet.
 
-1. **Az átváltási árrés a kivonatból jön, nem beégetett szám.** A forintból
-   kimenő átváltások díjhányada — a mérésben 0,3498%. Ezzel csökkentve a
-   középárfolyamos érték **hat forinton belül** egyezett a Lightyear kijelzésével.
-   Új import újraszámolja, tehát nem rohad meg, ha a bróker árat változtat.
-2. **A készpénz kivezethető a kivonatból**, de csak a helyes előjel-logikával —
-   ezt mértük, nem feltételeztük: `Deposit` (Net==Gross, a díj nem terheli a
-   számlát), `Conversion` (a díj már a Gross-ban), `Buy` (Gross = ár + díj),
-   `Sell`/`Dividend` (Net). Így jött ki 608,60 Ft + 0,02 USD — pont amit a
-   Lightyear mutat.
-3. **A hozam alapja a befizetés, nem a bekerülési ár.** A bróker mércéje:
-   „betettem ennyit, most ennyim van". A díjak automatikusan veszteségként
-   szerepelnek, mert csökkentik a mai értéket.
-
-A pozíciósorok is árréssel számolnak, hogy az összegük kiadja a fejlécet.
+A készpénz továbbra is a kivonat előjel-logikájával kerül be (`Deposit`,
+`Conversion`, `Buy`, `Sell`/`Dividend`), a hozam alapja pedig a külső
+befizetés. Így a widget, a kártyák és a fejléc ugyanazt a fő összeget használja.
 
 **Devizaforrás:** elsődlegesen napra kész piaci jegyzés, tartalék az ECB. Az
 ECB délután publikál, tehát délelőtt a „legfrissebb" ECB-adat még a tegnapi —
@@ -237,7 +230,7 @@ az éles provider-alkalmazást, szerződést és saját kulcsot a felhasználó 
 Közös titok nincs az appban, a privát kulcs készülék-helyi Keychainben marad,
 és a kivonat-import provider nélkül is teljes értékű.
 
-### Build 33 — import-egyeztetés, WebKincstár-részletek, crypto export és banki provider-állapot
+### Build 34 — import-egyeztetés, WebKincstár-részletek, crypto export, banki provider-állapot és érték-egyeztetés
 
 A Beállítások → Fejlesztői eszközök → **Import- és értékellenőrzés** nézete
 megmutatja, ha hiányzik egy árfolyam, régi egyenlegből számolunk, szokatlan a

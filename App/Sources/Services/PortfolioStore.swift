@@ -244,20 +244,31 @@ final class PortfolioStore {
     /// semmit, mint hogy egy másik bróker árrését alkalmazzuk rá.
     func spread(for account: String) -> Decimal { conversionSpread[account] ?? 0 }
 
-    /// Amit ténylegesen kapnál, ha ma eladnál és forintra váltanál:
-    /// a befektetések középárfolyamos értéke az átváltási árréssel csökkentve,
-    /// plusz a számlán álló készpénz.
+    /// A szolgáltatói számla aktuális, középárfolyamos értéke.
     ///
-    /// A bróker is így értékel — ezt mértük: az árréssel csökkentett összeg
-    /// hat forinton belül egyezett azzal, amit a Lightyear kijelez. Középárfolyamon
-    /// számolva az app rendre magasabb, tehát optimistább számot mutatna.
+    /// A korábbi importból számolt conversion spread történeti díj, ezért nem
+    /// vonjuk le minden élő pozícióból. Így a fő összeg és a platformkártyák
+    /// ugyanazt a piaci értéket mutatják, mint a szolgáltatói számlanézet.
     var netValueHUF: Decimal {
-        // Pozíciónként a SAJÁT számlája árrésével — brókerenként más —,
-        // plusz a brókernél álló készpénz, plusz a kamatozó megtakarítások.
+        // Pozíciónként a közös aktuális érték, plusz a brókernél álló
+        // készpénz, plusz a kamatozó megtakarítások.
         //
         // A megtakarítások BENNE VANNAK: enélkül az XIRR a teljes befizetést
         // hasonlítaná a csak-értékpapír értékhez, és irreális veszteséget mutatna.
         let securities = holdings.reduce(Decimal(0)) { $0 + (netValueHUF(for: $1) ?? 0) }
+        let crypto = cryptoPositions.reduce(Decimal(0)) { $0 + $1.currentValueHUF }
+        let savings = cashAssets.reduce(Decimal(0)) {
+            $0 + convertToHUF($1.estimatedBalance(), currency: $1.currency)
+        }
+        return securities + cashHUF + savings + crypto
+    }
+
+    /// Tájékoztató becslés arra az esetre, ha minden értékpapírt most adnál
+    /// el, és a bevételt forintra váltanád. Ez nem a fő portfólióérték.
+    var realizableValueHUF: Decimal {
+        let securities = holdings.reduce(Decimal(0)) {
+            $0 + (realizableValueHUF(for: $1) ?? 0)
+        }
         let crypto = cryptoPositions.reduce(Decimal(0)) { $0 + $1.currentValueHUF }
         let savings = cashAssets.reduce(Decimal(0)) {
             $0 + convertToHUF($1.estimatedBalance(), currency: $1.currency)
@@ -296,12 +307,17 @@ final class PortfolioStore {
         quotes[holding.isin].map { holding.quantity * $0.price }
     }
 
-    /// A pozíció FORINTOS értéke ugyanazzal a mércével, mint a fejléc:
-    /// árréssel csökkentve. Enélkül a sorok összege nem adná ki az összesent,
-    /// és a felhasználó jogosan hinné, hogy valamelyik szám hibás.
+    /// A pozíció aktuális FORINTOS piaci értéke ugyanazzal a mércével, mint a
+    /// fejléc. Enélkül a sorok összege nem adná ki az összesent.
     func netValueHUF(for holding: Holding) -> Decimal? {
         guard let value = value(for: holding) else { return nil }
-        return value * fxRate * (1 - spread(for: holding.account))
+        return value * fxRate
+    }
+
+    /// A korábbi conversion spreaddel csökkentett, csak tájékoztató érték.
+    func realizableValueHUF(for holding: Holding) -> Decimal? {
+        guard let market = netValueHUF(for: holding) else { return nil }
+        return market * (1 - spread(for: holding.account))
     }
 
     /// Egy pozíció súlya a portfólión belül — ez a „számla megoszlása".

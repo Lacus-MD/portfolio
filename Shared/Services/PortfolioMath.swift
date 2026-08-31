@@ -31,13 +31,38 @@ enum PortfolioMath {
         }
     }
 
-    /// Egy pozíció forintos értéke az adott számla átváltási árrésével
-    /// csökkentve — a bróker is így értékel.
+    /// Egy pozíció aktuális, középárfolyamos piaci értéke forintban.
+    ///
+    /// A kivonatból mért conversion spread történeti díj: a korábbi
+    /// átváltásokra vonatkozik, nem a jelenlegi értékpapír-jegyzésre. Ha ezt
+    /// minden élő pozícióból levonnánk, a szolgáltató kijelzett számlaértékét
+    /// mesterségesen alulbecsülnénk. Ez a fő portfólió-összeg és a widget
+    /// közös forrása.
+    static func marketValueHUF(of holding: Holding,
+                               in payload: PortfolioFile.Payload,
+                               prices: Prices) -> Decimal? {
+        guard let price = prices.quotes[holding.isin] else { return nil }
+        return holding.quantity * price * prices.fxRate
+    }
+
+    /// A pozíció becsült, azonnali forintra váltás utáni értéke.
+    ///
+    /// Ez tájékoztató számítás marad; a történeti conversion spreadet nem
+    /// szabad a szolgáltatói aktuális portfólióértékből levonni.
+    static func realizableValueHUF(of holding: Holding,
+                                   in payload: PortfolioFile.Payload,
+                                   prices: Prices) -> Decimal? {
+        guard let market = marketValueHUF(of: holding, in: payload, prices: prices)
+        else { return nil }
+        let spread = payload.conversionSpread[holding.account] ?? 0
+        return market * (1 - spread)
+    }
+
+    /// Kompatibilitási név a régi hívóknak. A fő érték most piaci érték,
+    /// ezért nem tartalmaz történeti conversion-spread levonást.
     static func netValueHUF(of holding: Holding, in payload: PortfolioFile.Payload,
                             prices: Prices) -> Decimal? {
-        guard let price = prices.quotes[holding.isin] else { return nil }
-        let spread = payload.conversionSpread[holding.account] ?? 0
-        return holding.quantity * price * prices.fxRate * (1 - spread)
+        marketValueHUF(of: holding, in: payload, prices: prices)
     }
 
     // MARK: - Platformok
@@ -88,7 +113,7 @@ enum PortfolioMath {
                          prices: Prices) -> Decimal {
         let securities = payload.holdings
             .filter { $0.account == id }
-            .reduce(Decimal(0)) { $0 + (netValueHUF(of: $1, in: payload, prices: prices) ?? 0) }
+            .reduce(Decimal(0)) { $0 + (marketValueHUF(of: $1, in: payload, prices: prices) ?? 0) }
 
         let brokerCash = (payload.cash[id] ?? [:]).reduce(Decimal(0)) { sum, entry in
             sum + convertToHUF(entry.value, currency: entry.key, prices: prices)
@@ -102,6 +127,32 @@ enum PortfolioMath {
                 $0 + convertToHUF($1.estimatedBalance(), currency: $1.currency, prices: prices)
             }
 
+        let crypto = payload.cryptoPositions
+            .filter { $0.platform == id }
+            .reduce(Decimal(0)) { $0 + $1.currentValueHUF }
+
+        return securities + brokerCash + savings + crypto
+    }
+
+    /// Ugyanaz a platformérték, mint `valueHUF`, de a korábbi conversion
+    /// spreaddel csökkentett, tájékoztató „ha most eladnám” becslés.
+    static func realizableValueHUF(ofPlatform id: String,
+                                   in payload: PortfolioFile.Payload,
+                                   prices: Prices) -> Decimal {
+        let securities = payload.holdings
+            .filter { $0.account == id }
+            .reduce(Decimal(0)) {
+                $0 + (realizableValueHUF(of: $1, in: payload, prices: prices) ?? 0)
+            }
+
+        let brokerCash = (payload.cash[id] ?? [:]).reduce(Decimal(0)) { sum, entry in
+            sum + convertToHUF(entry.value, currency: entry.key, prices: prices)
+        }
+        let savings = payload.cashAssets
+            .filter { $0.platform == id }
+            .reduce(Decimal(0)) {
+                $0 + convertToHUF($1.estimatedBalance(), currency: $1.currency, prices: prices)
+            }
         let crypto = payload.cryptoPositions
             .filter { $0.platform == id }
             .reduce(Decimal(0)) { $0 + $1.currentValueHUF }

@@ -38,7 +38,7 @@ final class PortfolioMathTests: XCTestCase {
         )
     }
 
-    func testNetValueAppliesAccountSpecificConversionSpread() {
+    func testNetValueUsesCurrentMarketValueWithoutHistoricalSpread() {
         var payload = PortfolioFile.Payload()
         payload.conversionSpread = ["broker": Decimal(string: "0.01")!]
         let holding = Holding(account: "broker", isin: "IE00BK5BQT80", ticker: "VWCE",
@@ -48,6 +48,40 @@ final class PortfolioMathTests: XCTestCase {
 
         assertDecimalEqual(
             PortfolioMath.netValueHUF(of: holding, in: payload, prices: prices) ?? 0,
+            80_000
+        )
+    }
+
+    func testRealizableValueAppliesAccountSpecificConversionSpread() {
+        var payload = PortfolioFile.Payload()
+        payload.conversionSpread = ["broker": Decimal(string: "0.01")!]
+        let holding = Holding(account: "broker", isin: "IE00BK5BQT80", ticker: "VWCE",
+                              name: "VWCE", quantity: 2, averageCost: 100,
+                              tbszYear: 2026)
+        let prices = PortfolioMath.Prices(quotes: [holding.isin: 100], fxRate: 400)
+
+        assertDecimalEqual(
+            PortfolioMath.realizableValueHUF(of: holding, in: payload, prices: prices) ?? 0,
+            79_200
+        )
+    }
+
+    func testPlatformValueDoesNotSubtractHistoricalSpread() {
+        var payload = PortfolioFile.Payload()
+        payload.platforms = [Platform(id: "broker", name: "Broker", kind: .brokerage)]
+        payload.conversionSpread = ["broker": Decimal(string: "0.01")!]
+        let holding = Holding(account: "broker", isin: "IE00BK5BQT80", ticker: "VWCE",
+                              name: "VWCE", quantity: 2, averageCost: 100,
+                              tbszYear: 2026)
+        payload.holdings = [holding]
+        let prices = PortfolioMath.Prices(quotes: [holding.isin: 100], fxRate: 400)
+
+        assertDecimalEqual(
+            PortfolioMath.valueHUF(ofPlatform: "broker", in: payload, prices: prices),
+            80_000
+        )
+        assertDecimalEqual(
+            PortfolioMath.realizableValueHUF(ofPlatform: "broker", in: payload, prices: prices),
             79_200
         )
     }

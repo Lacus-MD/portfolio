@@ -1,13 +1,13 @@
-# Portfolio 1.0 Release Candidate checklist — Build 33
+# Portfolio 1.0 Release Candidate checklist — Build 34
 
-This checklist is the no-device verification path for Build 33. It is safe to
+This checklist is the no-device verification path for Build 34. It is safe to
 run without bank credentials, signing secrets, or a connected phone.
 
 - [x] XcodeGen regenerated `Portfolio.xcodeproj` from `project.yml`.
 - [x] Unit-test target compiles for iPhoneOS without signing.
-- [ ] All app, widget, share-extension, watch app, and watch widget targets
-  compile in the Build 30 Release configuration; the retry is currently
-  blocked by Xcode's `ObservationMacros` plugin service on the host.
+- [x] All app, widget, share-extension, watch app, and watch widget targets
+  compile in the Build 34 Release configuration. The build reports only the
+  pre-existing DateFormatter and watch-target warnings.
 - [x] Build number is read from the generated app bundle Info.plist.
 - [x] iCloud sync envelope round-trip and revision conflict tests compile in
   the iPhoneOS unit-test target.
@@ -35,8 +35,9 @@ run without bank credentials, signing secrets, or a connected phone.
 - [ ] Five-to-seven-day TestFlight observation — deferred until a device and
   App Store Connect upload are available.
 
-Build 33 implementation is complete for the import-reconciliation,
-WebKincstár-detail, crypto-export and provider-gating slices. Release and
+Build 34 implementation is complete for the import-reconciliation,
+WebKincstár-detail, crypto-export, provider-gating and portfolio-value
+reconciliation slices. Release and
 runtime verification remain deferred because the host cannot start the
 CoreSimulator service and the physical iPhone is unavailable; the existing
 cloud-sync implementation was not changed.

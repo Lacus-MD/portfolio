@@ -55,6 +55,7 @@ sikeres, a telefonos telepítés sikerült, és a commit felkerült GitHubra.
 | 31 | Import-egyeztetés és részletes WebKincstár-sorok | ellenőrzés alatt | munkafolyamatban |
 | 32 | Crypto read-only export és HUF értékmegőrzés | ellenőrzés alatt | munkafolyamatban |
 | 33 | Enable Banking provider-állapot és biztonságos élesítés | ellenőrzés alatt | munkafolyamatban |
+| 34 | Portfólióérték-egyeztetés: piaci és realizálható érték szétválasztása | ellenőrzés alatt | munkafolyamatban |
 
 ### Következő fejlesztési sorrend (felhőszinkron kész)
 
@@ -76,7 +77,10 @@ Az iCloud szinkronizálás (Mac és iPad között is) már kész, ezért ezt nem
 5. **Release ellenőrzés** — unit/fordítás, Release build, eszközös smoke és
    csak ezután TestFlight-megfigyelés.
 
-Az aktuális Build 33 az első négy pont implementációját tartalmazza. A build és
+A Build 34 az első négy pont implementációja mellett a portfólióérték
+egyeztetését is tartalmazza: a fő összeg a szolgáltatói aktuális piaci értéket
+követi, a történeti conversion spread pedig külön realizálható becslés marad.
+A build és
 a runtime ellenőrzés a host Xcode plug-in/CoreSimulator korlátozása miatt még
 nem zárható le.
 

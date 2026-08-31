@@ -42,7 +42,7 @@ struct PortfolioEntry: TimelineEntry {
     /// amiből a kezdőképernyő közös görbéje épül. Korábban az értékpapírok
     /// eurós értéke volt, ezért nézett ki más alakúnak, mint az appban.
     var sparkline: [Double] = []
-    /// A forintban realizálható teljes érték (árréssel, készpénzzel,
+    /// A jelenlegi középárfolyamos teljes érték (készpénzzel és
     /// megtakarításokkal) — ugyanaz a szám, amit az app fejléce mutat.
     var netHUF: Decimal = 0
     /// Összes befizetés — a „kezdetektől" hozam alapja, ahogy a brókernél is.
