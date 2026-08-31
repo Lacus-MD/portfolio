@@ -329,8 +329,51 @@ struct StatementImporter {
     }
 
     static func number(_ text: String) -> Decimal {
+        // Lightyear exports quantities with a fixed-point dot and can keep
+        // up to nine fractional digits (for example `1.000000000`). The
+        // Hungarian/locale parser intentionally treats a dot followed by
+        // three digits as a thousands separator, which would turn that value
+        // into one billion shares. Lightyear is a separate, English-column
+        // format, so parse its numeric fields with a dot-first rule.
         let t = text.trimmingCharacters(in: .whitespaces)
+            .replacingOccurrences(of: "\u{00A0}", with: "")
+            .replacingOccurrences(of: "\u{202F}", with: "")
+            .replacingOccurrences(of: "\u{2009}", with: "")
+            .replacingOccurrences(of: " ", with: "")
         guard !t.isEmpty else { return 0 }
-        return HungarianCSV.number(t) ?? 0
+
+        let comma = t.lastIndex(of: ",")
+        let dot = t.lastIndex(of: ".")
+        let decimalSeparator: Character?
+        switch (comma, dot) {
+        case let (comma?, dot?):
+            // Whichever separator appears last is the decimal separator.
+            // This also tolerates a locale-formatted file such as 1.234,56.
+            decimalSeparator = comma > dot ? "," : "."
+        case (nil, _?):
+            // Unlike the Hungarian parser, ANY dot is decimal here — this is
+            // what preserves Lightyear's fractional-share precision.
+            decimalSeparator = "."
+        case let (comma?, nil):
+            // A comma-only localized amount is decimal when its fractional
+            // part is not a three-digit grouping. Canonical Lightyear files
+            // use a dot, so the ambiguous 1,000 form remains one thousand.
+            let trailing = t.distance(from: t.index(after: comma), to: t.endIndex)
+            decimalSeparator = trailing == 3 ? nil : ","
+        case (nil, nil):
+            decimalSeparator = nil
+        }
+
+        var normalized = t
+        if let decimalSeparator {
+            let grouping = decimalSeparator == "." ? "," : "."
+            normalized = normalized.replacingOccurrences(of: String(grouping), with: "")
+            normalized = normalized.replacingOccurrences(of: String(decimalSeparator), with: ".")
+        } else {
+            normalized = normalized
+                .replacingOccurrences(of: ",", with: "")
+                .replacingOccurrences(of: ".", with: "")
+        }
+        return Decimal(string: normalized, locale: Locale(identifier: "en_US_POSIX")) ?? 0
     }
 }

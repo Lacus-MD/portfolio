@@ -3,6 +3,12 @@ import XCTest
 @testable import Portfolio
 
 final class ImporterFixtureTests: XCTestCase {
+    func testLightyearNumberPreservesFractionalSharePrecision() {
+        XCTAssertEqual(StatementImporter.number("1.000000000"), Decimal(string: "1")!)
+        XCTAssertEqual(StatementImporter.number("0.125000000"), Decimal(string: "0.125")!)
+        XCTAssertEqual(StatementImporter.number("1,234.567890"), Decimal(string: "1234.567890")!)
+    }
+
     func testCSVParserStripsBOMAndKeepsQuotedDelimiter() {
         let fields = StatementImporter.parse(
             line: "\u{FEFF}\"Dátum\";\"Leírás; részlet\";\"1,23\"",

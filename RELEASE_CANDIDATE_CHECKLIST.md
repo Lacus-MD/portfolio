@@ -1,6 +1,6 @@
-# Portfolio 1.0 Release Candidate checklist — Build 29
+# Portfolio 1.0 Release Candidate checklist — Build 30
 
-This checklist is the no-device verification path for Build 29. It is safe to
+This checklist is the no-device verification path for Build 30. It is safe to
 run without bank credentials, signing secrets, or a connected phone.
 
 - [x] XcodeGen regenerated `Portfolio.xcodeproj` from `project.yml`.
@@ -13,6 +13,8 @@ run without bank credentials, signing secrets, or a connected phone.
   the iPhoneOS unit-test target.
 - [x] The app pulls remote portfolio revisions on startup/foreground and
   publishes successful local saves to the existing iCloud Documents container.
+- [x] Lightyear fractional quantities with three or more decimal places are
+  parsed as decimals rather than thousands-separated integers.
 - [x] `git diff --check` passes.
 - [x] Importer fixtures contain no personal or bank data.
 - [ ] Runtime unit/UI tests — deferred because CoreSimulatorService cannot
