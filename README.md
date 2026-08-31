@@ -235,7 +235,7 @@ kivonat eredetije eltűnik — egy bankkivonat archívum-érték.
 A 3. szint (Enable Banking PSD2) tudatosan nincs megépítve — a döntés és a
 kutatás a `Docs/import-automatizalas-terv.md`-ben.
 
-### Build 31 — import-egyeztetés és WebKincstár-részletek
+### Build 32 — import-egyeztetés, WebKincstár-részletek és crypto export
 
 A Beállítások → Fejlesztői eszközök → **Import- és értékellenőrzés** nézete
 megmutatja, ha hiányzik egy árfolyam, régi egyenlegből számolunk, szokatlan a
@@ -247,6 +247,11 @@ eltér a mentett végösszegtől. A WebKincstár CSV/TXT sorai külön is megmar
 Ez továbbra is helyi, olvasó import: nem kér államkincstári jelszót és nem
 indít tranzakciót. Az iCloud szinkronizálás meglévő payload-rétege automatikusan
 viszi az új mezőt Mac, iPad és iPhone között.
+
+Crypto/wallet CSV-kből ugyanígy csak az exportált, HUF-ban megadott mérési
+értéket és opcionális bekerülést tartjuk meg. A képernyőn ez külön „Kripto
+wallet” platformként jelenik meg; élő árfolyam, privát kulcs és kereskedési
+művelet nincs benne.
 
 ## Költés-elemzés: fix vs. változó, futamidő, előfizetések
 

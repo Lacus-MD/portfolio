@@ -53,6 +53,7 @@ sikeres, a telefonos telepítés sikerült, és a commit felkerült GitHubra.
 | 29 | iCloud szinkronizálás platformok és eszközök között | elkészült (telefonos ellenőrzés halasztva) | 24d1f93 · 57d19e7 |
 | 30 | Lightyear tört darabszámok és újraimportálás | ellenőrzés alatt | 47b1d0b |
 | 31 | Import-egyeztetés és részletes WebKincstár-sorok | ellenőrzés alatt | munkafolyamatban |
+| 32 | Crypto read-only export és HUF értékmegőrzés | ellenőrzés alatt | munkafolyamatban |
 
 ### Következő fejlesztési sorrend (felhőszinkron kész)
 
@@ -73,7 +74,7 @@ Az iCloud szinkronizálás (Mac és iPad között is) már kész, ezért ezt nem
 5. **Release ellenőrzés** — unit/fordítás, Release build, eszközös smoke és
    csak ezután TestFlight-megfigyelés.
 
-Az aktuális Build 31 az első két pont implementációját tartalmazza. A build és
+Az aktuális Build 32 az első három pont implementációját tartalmazza. A build és
 a runtime ellenőrzés a host Xcode plug-in/CoreSimulator korlátozása miatt még
 nem zárható le.
 

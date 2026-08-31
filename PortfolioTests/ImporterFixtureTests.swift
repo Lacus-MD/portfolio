@@ -116,4 +116,23 @@ final class ImporterFixtureTests: XCTestCase {
         XCTAssertNotNil(position.maturityDate)
         XCTAssertEqual(position.couponPct, Decimal(string: "6.50"))
     }
+
+    func testCryptoExportIsReadOnlyAndUsesHUFValueWithoutInventingFX() throws {
+        let text = """
+        Binance portfolio export
+        Asset;Asset name;Quantity;Current value (HUF);Cost basis (HUF);As of
+        BTC;Bitcoin;0,025;720 000 HUF;600 000 HUF;2026-08-30
+        ETH;Ethereum;0,40;420 000 HUF;400 000 HUF;2026-08-30
+        Total;Total; ;1 140 000 HUF;1 000 000 HUF;2026-08-30
+        """
+
+        XCTAssertTrue(CryptoImporter.detect(text: text, fileName: "binance-wallet.csv"))
+        let result = try CryptoImporter.import(text: text, accountHint: "binance-wallet.csv")
+        XCTAssertEqual(result.account, "crypto-binance")
+        XCTAssertEqual(result.positions.count, 2)
+        XCTAssertEqual(result.positions.map(\.symbol), ["BTC", "ETH"])
+        let importedTotal = result.positions.reduce(Decimal(0)) { $0 + $1.currentValueHUF }
+        XCTAssertEqual(importedTotal, Decimal(1_140_000))
+        XCTAssertTrue(result.warnings.first?.contains("Csak olvasható") == true)
+    }
 }

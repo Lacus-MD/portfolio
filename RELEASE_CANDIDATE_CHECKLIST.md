@@ -1,6 +1,6 @@
-# Portfolio 1.0 Release Candidate checklist — Build 31
+# Portfolio 1.0 Release Candidate checklist — Build 32
 
-This checklist is the no-device verification path for Build 31. It is safe to
+This checklist is the no-device verification path for Build 32. It is safe to
 run without bank credentials, signing secrets, or a connected phone.
 
 - [x] XcodeGen regenerated `Portfolio.xcodeproj` from `project.yml`.
@@ -20,6 +20,8 @@ run without bank credentials, signing secrets, or a connected phone.
 - [x] WebKincstár export sorai megőrzik az ISIN/névérték/bekerülés/lejárat/
   kamat mezőit, ha az export tartalmazza őket.
 - [x] Az állampapír-lejáratok megjelennek a kamat- és lejárati naptárban.
+- [x] Crypto/wallet export HUF mérési értékkel, opcionális bekerüléssel és
+  duplázás elleni platform-egyeztetéssel kerül be; nincs tranzakciós útvonal.
 - [x] `git diff --check` passes.
 - [x] Importer fixtures contain no personal or bank data.
 - [ ] Runtime unit/UI tests — deferred because CoreSimulatorService cannot

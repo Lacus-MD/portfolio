@@ -547,7 +547,7 @@ struct SettingsView: View {
             do {
                 let year = Calendar.current.component(.year, from: Date())
                 let (warnings, account) = try await store.importStatement(from: url, tbszYear: year)
-                var message = "Számla: \(account)\n\(store.holdings.count) pozíció, \(store.deposits.count) befizetés."
+                var message = "Forrás: \(account)\n\(store.holdings.count) értékpapír, \(store.treasuryPositions.count) állampapír-sor, \(store.cryptoPositions.count) kripto-sor."
                 if !warnings.isEmpty {
                     message += "\n\n" + Set(warnings).sorted().joined(separator: "\n")
                 }

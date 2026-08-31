@@ -27,6 +27,8 @@ struct Platform: Identifiable, Codable, Hashable {
         /// nyereségének 95%-át adta. Az nem befektetési eredmény volt, hanem
         /// az, hogy megjött a fizetés.
         case current
+        /// Kripto- vagy wallet-exportból származó, csak olvasható eszközök.
+        case crypto
     }
 
     /// Igaz, ha a platform tartozás, nem eszköz.

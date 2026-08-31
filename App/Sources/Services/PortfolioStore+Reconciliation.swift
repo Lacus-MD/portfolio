@@ -108,6 +108,32 @@ extension PortfolioStore {
                 }
             }
 
+            if summary.platform.kind == .crypto {
+                let positions = cryptoPositions.filter { $0.platform == id }
+                if positions.contains(where: { $0.asOf == nil }) {
+                    let issue = ReconciliationIssue(
+                        id: "platform.crypto-no-date.\(id)",
+                        severity: .warning,
+                        title: "Kripto-export dátuma hiányzik",
+                        detail: "Az érték csak az export pillanatára tekinthető mérésnek; olvasd be újra dátummal ellátott exportból."
+                    )
+                    issues.append(issue)
+                    rowSeverity = max(rowSeverity, issue.severity)
+                    details.append("hiányzik az export dátuma")
+                }
+                if positions.contains(where: { $0.currentValueHUF <= 0 }) {
+                    let issue = ReconciliationIssue(
+                        id: "platform.crypto-zero-value.\(id)",
+                        severity: .warning,
+                        title: "Nulla értékű kripto-sor",
+                        detail: "A nulla értékű sor nem adható hozzá a nettó vagyonhoz; ellenőrizd az export szűrését."
+                    )
+                    issues.append(issue)
+                    rowSeverity = max(rowSeverity, issue.severity)
+                    details.append("nulla értékű sor")
+                }
+            }
+
             // MÁK imports keep both the aggregate balance and the individual
             // security rows. Compare them here so a changed export layout or
             // a duplicated total row cannot silently inflate the portfolio.
@@ -191,6 +217,7 @@ extension PortfolioStore {
         if platform.id.hasPrefix("treasury-") || normalized.contains("allamkincstar") {
             return "WebKincstár export"
         }
+        if platform.kind == .crypto { return "Kripto/wallet export" }
         if platform.kind == .brokerage { return "Értékpapír-kivonat" }
         return "Helyi import"
     }

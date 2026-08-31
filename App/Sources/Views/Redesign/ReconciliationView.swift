@@ -43,6 +43,16 @@ struct ReconciliationView: View {
                 }
             }
 
+            if !store.cryptoPositions.isEmpty {
+                Section {
+                    ForEach(store.cryptoPositions) { position in
+                        cryptoRow(position)
+                    }
+                } header: {
+                    Text("Kripto-pozíciók · csak olvasható export")
+                }
+            }
+
             Section {
                 Text("Az ellenőrző központ a helyi importokat, az árfolyamforrást és az egyenlegek frissességét hasonlítja össze. A piaci érték szolgáltatónként és időpont szerint eltérhet; az eltérés önmagában nem import-hiba.")
                     .font(DS.meta)
@@ -169,6 +179,28 @@ struct ReconciliationView: View {
                 }
                 if let maturity = position.maturityDate {
                     Text("Lejárat \(Fmt.day(maturity))").font(DS.meta)
+                }
+            }
+            .foregroundStyle(DS.Color.inkSoft(0.52))
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func cryptoRow(_ position: CryptoPosition) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(position.name).font(DS.rowTitle)
+                Spacer(minLength: 8)
+                Text(Fmt.huf(position.currentValueHUF))
+                    .font(DS.font(13.5, .semibold).monospacedDigit())
+            }
+            HStack(spacing: 8) {
+                Text(position.symbol).font(DS.meta.monospacedDigit())
+                if let quantity = position.quantity {
+                    Text("\(Fmt.decimal(quantity, max: 8)) db").font(DS.meta)
+                }
+                if let asOf = position.asOf {
+                    Text("export: \(Fmt.day(asOf))").font(DS.meta)
                 }
             }
             .foregroundStyle(DS.Color.inkSoft(0.52))

@@ -48,6 +48,7 @@ enum PortfolioMath {
         let known = Set(payload.platforms.map(\.id))
         let ids = Set(payload.holdings.map(\.account))
             .union(payload.cashAssets.map(\.platform))
+            .union(payload.cryptoPositions.map(\.platform))
             .subtracting(known)
             .sorted()
         let usedAccents = Set(payload.platforms.map(\.accent))
@@ -55,10 +56,11 @@ enum PortfolioMath {
             + Platform.Accent.allCases
         let derived = ids.enumerated().map { index, id -> Platform in
             let hasSecurities = payload.holdings.contains { $0.account == id }
+            let hasCrypto = payload.cryptoPositions.contains { $0.platform == id }
             return Platform(
                 id: id,
                 name: displayName(forAccount: id, in: payload),
-                kind: hasSecurities ? .brokerage : .savings,
+                kind: hasSecurities ? .brokerage : (hasCrypto ? .crypto : .savings),
                 accent: accents[index % accents.count],
                 tbszYear: payload.holdings.first { $0.account == id }?.tbszYear
             )
@@ -75,6 +77,9 @@ enum PortfolioMath {
             return "TBSZ \(String(year)) · \(ticker)"
         }
         if let ticker = tickers.first { return ticker }
+        if let crypto = payload.cryptoPositions.first(where: { $0.platform == id }) {
+            return crypto.source
+        }
         if let asset = payload.cashAssets.first(where: { $0.platform == id }) { return asset.name }
         return id
     }
@@ -97,11 +102,19 @@ enum PortfolioMath {
                 $0 + convertToHUF($1.estimatedBalance(), currency: $1.currency, prices: prices)
             }
 
-        return securities + brokerCash + savings
+        let crypto = payload.cryptoPositions
+            .filter { $0.platform == id }
+            .reduce(Decimal(0)) { $0 + $1.currentValueHUF }
+
+        return securities + brokerCash + savings + crypto
     }
 
     static func depositsHUF(ofPlatform id: String, in payload: PortfolioFile.Payload) -> Decimal {
-        payload.deposits.filter { $0.account == id }.reduce(0) { $0 + $1.amountHUF }
+        let cashDeposits = payload.deposits.filter { $0.account == id }
+            .reduce(Decimal(0)) { $0 + $1.amountHUF }
+        let cryptoBasis = payload.cryptoPositions.filter { $0.platform == id }
+            .reduce(Decimal(0)) { $0 + ($1.investedValueHUF ?? 0) }
+        return cashDeposits + cryptoBasis
     }
 
     // MARK: - Összesítés
@@ -129,7 +142,10 @@ enum PortfolioMath {
             .reduce(Decimal(0)) { $0 + $1.amountHUF }
         let internalNet = relevant.filter(\.isInternal)
             .reduce(Decimal(0)) { $0 + $1.amountHUF }
-        return external + max(0, internalNet)
+        let cryptoBasis = payload.cryptoPositions.reduce(Decimal(0)) {
+            $0 + ($1.investedValueHUF ?? 0)
+        }
+        return external + max(0, internalNet) + cryptoBasis
     }
 
     /// Napi ÖSSZVAGYON forintban, a mérésekből — ugyanaz a sorozat, amiből a

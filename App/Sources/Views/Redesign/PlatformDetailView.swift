@@ -24,6 +24,9 @@ struct PlatformDetailView: View {
     private var savings: [CashAsset] {
         store.cashAssets.filter { $0.platform == summary.platform.id }
     }
+    private var crypto: [CryptoPosition] {
+        store.cryptoPositions.filter { $0.platform == summary.platform.id }
+    }
 
     /// A tartozás kézi átírása — csak hitelkártyánál jelenik meg.
     @State private var editingDebt = false
@@ -347,6 +350,19 @@ struct PlatformDetailView: View {
                     delta: nil
                 )
             }
+            ForEach(crypto) { position in
+                let quantityText = position.quantity.map { "\(Fmt.decimal($0, max: 8)) db" }
+                let meta = [quantityText, position.asOf.map { "export: \(Fmt.day($0))" }]
+                    .compactMap { $0 }
+                    .joined(separator: " · ")
+                assetRow(
+                    monogram: String(position.symbol.prefix(2)),
+                    name: position.name,
+                    meta: meta.isEmpty ? "Csak olvasható export" : meta,
+                    value: position.currentValueHUF,
+                    delta: cryptoDelta(for: position)
+                )
+            }
 
             composition
             tbszCard
@@ -375,7 +391,7 @@ struct PlatformDetailView: View {
     }
 
     private var assetMeta: String {
-        let count = holdings.count + savings.count
+        let count = holdings.count + savings.count + crypto.count
         return count == 1 ? "1 eszköz" : "\(count) eszköz"
     }
 
@@ -400,6 +416,11 @@ struct PlatformDetailView: View {
     private func deltaPct(for holding: Holding) -> Double? {
         guard holding.costBasis > 0, let value = store.value(for: holding) else { return nil }
         return ((value - holding.costBasis) / holding.costBasis).doubleValue * 100
+    }
+
+    private func cryptoDelta(for position: CryptoPosition) -> Double? {
+        guard let invested = position.investedValueHUF, invested > 0 else { return nil }
+        return ((position.currentValueHUF - invested) / invested).doubleValue * 100
     }
 
     private func assetRow(monogram: String, name: String, meta: String,

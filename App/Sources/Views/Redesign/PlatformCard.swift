@@ -134,6 +134,7 @@ struct PlatformCard: View {
         case .savings:   "piggybank.fill"
         case .current:   "wallet.bifold.fill"
         case .credit:    "creditcard.fill"
+        case .crypto:    "bitcoinsign.circle.fill"
         }
     }
 
@@ -156,6 +157,8 @@ struct PlatformCard: View {
                 .frame(width: 5, height: 5)
                 .padding(10)
                 .background(palette.badgeFill, in: .rect(cornerRadius: 11))
+        } else if summary.platform.kind == .crypto {
+            badge { Text("Export") }
         }
     }
 

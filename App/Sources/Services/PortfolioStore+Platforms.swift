@@ -51,6 +51,7 @@ extension PortfolioStore {
         payload.deposits = deposits
         payload.platforms = platforms
         payload.cashAssets = cashAssets
+        payload.cryptoPositions = cryptoPositions
         payload.cash = cash
         payload.conversionSpread = conversionSpread
         payload.snapshots = snapshots

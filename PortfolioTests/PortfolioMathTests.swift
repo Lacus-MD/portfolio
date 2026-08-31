@@ -74,4 +74,22 @@ final class PortfolioMathTests: XCTestCase {
 
         XCTAssertEqual(PortfolioMath.dailyTotalsHUF(payload), [4_000])
     }
+
+    func testCryptoExportContributesValueAndImportedBasisOnce() {
+        var payload = PortfolioFile.Payload()
+        payload.cryptoPositions = [CryptoPosition(
+            id: "crypto-wallet:BTC", platform: "crypto-wallet", symbol: "BTC",
+            name: "Bitcoin", quantity: Decimal(string: "0.025"),
+            currentValueHUF: 720_000, investedValueHUF: 600_000,
+            source: "Kripto wallet"
+        )]
+        let prices = PortfolioMath.Prices(fxRate: 400, usdRate: 360)
+
+        XCTAssertEqual(PortfolioMath.valueHUF(ofPlatform: "crypto-wallet",
+                                               in: payload, prices: prices),
+                       Decimal(720_000))
+        XCTAssertEqual(PortfolioMath.depositsHUF(ofPlatform: "crypto-wallet", in: payload),
+                       Decimal(600_000))
+        XCTAssertEqual(PortfolioMath.depositsHUF(payload), Decimal(600_000))
+    }
 }

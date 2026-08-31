@@ -63,6 +63,9 @@ struct PlatformCardPalette {
         case .brokerage:
             accentIndex = platform.accent.index
             accent = platform.accent.color
+        case .crypto:
+            accentIndex = 5
+            accent = DS.Color.accent(5)
         }
 
         let adjacent = DS.Color.accent(((accentIndex ?? 0) + 1) % max(DS.Color.theme.accents.count, 1))

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		003B8FFC205B75B036A1B8E2 /* CryptoImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D89075A15C6BA807A3185B61 /* CryptoImporter.swift */; };
 		00700D1040E4372EBE19D339 /* ConstituentWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A53C90EDFA8B996A7C9801A /* ConstituentWatcher.swift */; };
 		00F6ECF0BB6DB3B8C4097919 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA99B9E873978EC6DBAC4D19 /* AppTheme.swift */; };
 		04C941EA967D7D7784E97613 /* PortfolioWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 776EFAF9C84C6001B0AC228C /* PortfolioWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -109,6 +110,7 @@
 		8358A44CAB24A38E1B6E0940 /* ConstituentWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A53C90EDFA8B996A7C9801A /* ConstituentWatcher.swift */; };
 		839E6E9C5C4A0CEFB1CEC0D3 /* QuoteService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BCD13FA79C064576B49556F /* QuoteService.swift */; };
 		88D4BC0132435A9891C11C6C /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E1CA38EFECB6718D70685A4 /* SettingsView.swift */; };
+		88E577A29286C2A9F3F3D4C7 /* CryptoPosition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F0B30C095287A2ADFEE371F /* CryptoPosition.swift */; };
 		8AE04F9A974A4562D81E4D0C /* AppMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5AA3CB2E7F6D42B22624C62 /* AppMark.swift */; };
 		8E3E9C4D4CF96F1302B5850D /* WatchSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB56E30850ED729B2770BD19 /* WatchSummary.swift */; };
 		8FEE5BD4FA99AC65AE0A7079 /* Snapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0D05B618852A51F6EDEBFE1 /* Snapshot.swift */; };
@@ -118,6 +120,7 @@
 		9709D0B65E9B82DD3F832BEF /* AllocationPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CB2A9DA4A7182FD97440001 /* AllocationPlan.swift */; };
 		975B928060E07AE96216E3D7 /* NewsImagePreloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7B717C27AF9B4EEBAFAA5D7 /* NewsImagePreloader.swift */; };
 		982058ABD7014CAC25E5DCCD /* StateTreasuryPosition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32C1EDA32BEE32C8A5567E5E /* StateTreasuryPosition.swift */; };
+		9BC8B8B52E5C81CD648A277B /* CryptoPosition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F0B30C095287A2ADFEE371F /* CryptoPosition.swift */; };
 		9D68BE8485B9D47E48792982 /* WatchSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB56E30850ED729B2770BD19 /* WatchSummary.swift */; };
 		9F578BE2A71111A3C82F1E0C /* CategoryPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5541C97E6670CAF98E6FEE6 /* CategoryPicker.swift */; };
 		A1257EEC9B311E0DBE3535D0 /* HoldingEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8412512291F7852C86C1945 /* HoldingEditorView.swift */; };
@@ -134,6 +137,7 @@
 		B7941E75ABE9FEC2E01C9510 /* BackgroundRefreshCompletion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B5ABE1DA5D296F5BB194AE0 /* BackgroundRefreshCompletion.swift */; };
 		B9A476DF04549849888F019C /* Odometer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF15DB474CC831B18254690 /* Odometer.swift */; };
 		BD104A8A9002FE1B1C27546E /* otp-account.txt in Resources */ = {isa = PBXBuildFile; fileRef = 4D193EB00DF549C95C60523B /* otp-account.txt */; };
+		BD9C4EA273D4D71778B7745F /* CryptoImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D89075A15C6BA807A3185B61 /* CryptoImporter.swift */; };
 		BFE62975D7BFE4EF0244B121 /* Inbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = F127D237DC8AF14B53FC9870 /* Inbox.swift */; };
 		C041EA4D1D601B371AE796B6 /* ExpenseCategorizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F857508D2BBB8DA6A8245A5 /* ExpenseCategorizer.swift */; };
 		C054C79B569134F9F92E528B /* FundComposition.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4D4000B8105A889221EC9BE /* FundComposition.swift */; };
@@ -287,6 +291,7 @@
 		2A13CF2FF2A4D2E3603F6508 /* Scenario.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scenario.swift; sourceTree = "<group>"; };
 		2A98B137DF10A23F2508BA19 /* AdaptiveColumns.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveColumns.swift; sourceTree = "<group>"; };
 		2CB609A6EE684479C5346D27 /* NewsReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewsReader.swift; sourceTree = "<group>"; };
+		2F0B30C095287A2ADFEE371F /* CryptoPosition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CryptoPosition.swift; sourceTree = "<group>"; };
 		30DBD31B989A78E59ADC81DB /* PortfolioWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortfolioWidgets.swift; sourceTree = "<group>"; };
 		31E609A777AC653AA80EA8CD /* Breathing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Breathing.swift; sourceTree = "<group>"; };
 		32C1EDA32BEE32C8A5567E5E /* StateTreasuryPosition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StateTreasuryPosition.swift; sourceTree = "<group>"; };
@@ -361,6 +366,7 @@
 		D7B717C27AF9B4EEBAFAA5D7 /* NewsImagePreloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewsImagePreloader.swift; sourceTree = "<group>"; };
 		D8412512291F7852C86C1945 /* HoldingEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoldingEditorView.swift; sourceTree = "<group>"; };
 		D8682CCF659DA99644C2C52B /* HungarianCSV.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HungarianCSV.swift; sourceTree = "<group>"; };
+		D89075A15C6BA807A3185B61 /* CryptoImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CryptoImporter.swift; sourceTree = "<group>"; };
 		D96B9B3F0C043ED783DE491D /* Analytics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Analytics.swift; sourceTree = "<group>"; };
 		DC47AC0D4D8A5DA6F18D7576 /* SpendingAnalysis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpendingAnalysis.swift; sourceTree = "<group>"; };
 		E032AC752DEBB782B116DE31 /* BankConsentInfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BankConsentInfoView.swift; sourceTree = "<group>"; };
@@ -513,6 +519,7 @@
 				D96B9B3F0C043ED783DE491D /* Analytics.swift */,
 				74B435E9269D19CB62430586 /* BackupSecurityManager.swift */,
 				8A53C90EDFA8B996A7C9801A /* ConstituentWatcher.swift */,
+				D89075A15C6BA807A3185B61 /* CryptoImporter.swift */,
 				10B9AF24A1852643722B93EE /* DailyDigest.swift */,
 				5F857508D2BBB8DA6A8245A5 /* ExpenseCategorizer.swift */,
 				D04D15B220D7C6C1BB955424 /* FXService.swift */,
@@ -711,6 +718,7 @@
 				1CB2A9DA4A7182FD97440001 /* AllocationPlan.swift */,
 				6DABB9674A8CFC4486C1D7BD /* CashFlow.swift */,
 				4DFD2A557AF572E6B449AECA /* CreditCardStatus.swift */,
+				2F0B30C095287A2ADFEE371F /* CryptoPosition.swift */,
 				567773178FAFDA753BA404F5 /* ExpenseEntry.swift */,
 				B4D4000B8105A889221EC9BE /* FundComposition.swift */,
 				869281FF4F5669F14BEF9560 /* Holding.swift */,
@@ -977,6 +985,8 @@
 				C06F3F7BE1D7BF290983A8BC /* ConstituentDetailView.swift in Sources */,
 				8358A44CAB24A38E1B6E0940 /* ConstituentWatcher.swift in Sources */,
 				DAB426E7A00B4FF8CAC7C017 /* CreditCardStatus.swift in Sources */,
+				BD9C4EA273D4D71778B7745F /* CryptoImporter.swift in Sources */,
+				9BC8B8B52E5C81CD648A277B /* CryptoPosition.swift in Sources */,
 				90A43C44E82E2DDC65B2745E /* DailyDigest.swift in Sources */,
 				AA77C49362AE4D58E8727756 /* DataFreshnessCenterView.swift in Sources */,
 				7C4E80BD4EB8045CCF614ACB /* DesignSystem.swift in Sources */,
@@ -1098,6 +1108,8 @@
 				6070864682C2A182D9EF3C1F /* CashFlow.swift in Sources */,
 				00700D1040E4372EBE19D339 /* ConstituentWatcher.swift in Sources */,
 				B62B8A0026DC3C2B5B44D6AE /* CreditCardStatus.swift in Sources */,
+				003B8FFC205B75B036A1B8E2 /* CryptoImporter.swift in Sources */,
+				88E577A29286C2A9F3F3D4C7 /* CryptoPosition.swift in Sources */,
 				665077A042C28253885F495C /* DailyDigest.swift in Sources */,
 				DE7096850261ED22D39EAD3D /* DesignSystem.swift in Sources */,
 				C041EA4D1D601B371AE796B6 /* ExpenseCategorizer.swift in Sources */,
@@ -1277,7 +1289,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 31;
+				CURRENT_PROJECT_VERSION = 32;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = YGU3DVQ6S8;
 				ENABLE_CODE_COVERAGE = NO;
@@ -1426,7 +1438,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 31;
+				CURRENT_PROJECT_VERSION = 32;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = YGU3DVQ6S8;
 				ENABLE_CODE_COVERAGE = NO;

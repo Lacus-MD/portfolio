@@ -35,6 +35,8 @@ final class PortfolioStore {
     private(set) var cashAssets: [CashAsset] = []
     /// Részletes WebKincstár sorok, platformonként.
     private(set) var treasuryPositions: [StateTreasuryPosition] = []
+    /// Csak olvasható kripto/wallet exportok pozíciói.
+    private(set) var cryptoPositions: [CryptoPosition] = []
     private(set) var cash: [String: [String: Decimal]] = [:]
     private(set) var conversionSpread: [String: Decimal] = [:]
     private(set) var tbszRules: TBSZRules?
@@ -218,7 +220,10 @@ final class PortfolioStore {
 
     var feeSummary: Analytics.FeeSummary? { Analytics.fees(fees, deposits: deposits) }
 
-    var totalDepositedHUF: Decimal { deposits.reduce(0) { $0 + $1.amountHUF } }
+    var totalDepositedHUF: Decimal {
+        deposits.reduce(Decimal(0)) { $0 + $1.amountHUF }
+        + cryptoPositions.reduce(Decimal(0)) { $0 + ($1.investedValueHUF ?? 0) }
+    }
     /// Középárfolyamos forintérték — az alap „papíron" ennyit ér.
     var totalValueHUF: Decimal { totalValueEUR * fxRate }
 
@@ -253,10 +258,11 @@ final class PortfolioStore {
         // A megtakarítások BENNE VANNAK: enélkül az XIRR a teljes befizetést
         // hasonlítaná a csak-értékpapír értékhez, és irreális veszteséget mutatna.
         let securities = holdings.reduce(Decimal(0)) { $0 + (netValueHUF(for: $1) ?? 0) }
+        let crypto = cryptoPositions.reduce(Decimal(0)) { $0 + $1.currentValueHUF }
         let savings = cashAssets.reduce(Decimal(0)) {
             $0 + convertToHUF($1.estimatedBalance(), currency: $1.currency)
         }
-        return securities + cashHUF + savings
+        return securities + cashHUF + savings + crypto
     }
 
     /// Hozam a befizetésekhez mérve — „kezdetektől". Ez a bróker mércéje is:
@@ -614,6 +620,9 @@ final class PortfolioStore {
         if StateTreasuryImporter.detect(text: text) {
             return try await applyStateTreasury(text: text, accountHint: fileName)
         }
+        if CryptoImporter.detect(text: text, fileName: fileName) {
+            return try await applyCrypto(text: text, accountHint: fileName)
+        }
 
         let account = StatementImporter.accountReference(from: fileName) ?? fileName
 
@@ -698,6 +707,20 @@ final class PortfolioStore {
         saveSoon()
         await refresh(force: true)
 
+        return (result.warnings, result.accountName)
+    }
+
+    /// Kripto/wallet export beolvasása. Nincs automatikus árfolyam vagy
+    /// tranzakciós művelet: az exportált HUF mérés kerül a portfólióba.
+    private func applyCrypto(text: String, accountHint: String) async throws
+        -> (warnings: [String], account: String) {
+        let result = try CryptoImporter.import(text: text, accountHint: accountHint)
+        let account = result.account
+        cryptoPositions.removeAll { $0.platform == account }
+        upsertKind(.crypto, id: account, name: result.accountName, monogram: "₿")
+        cryptoPositions.append(contentsOf: result.positions)
+        saveSoon()
+        await refresh(force: true)
         return (result.warnings, result.accountName)
     }
 
@@ -1333,6 +1356,7 @@ final class PortfolioStore {
         expenses.removeAll { $0.account == account }
         cashAssets.removeAll { $0.platform == account }
         treasuryPositions.removeAll { $0.id.hasPrefix("\(account):") }
+        cryptoPositions.removeAll { $0.platform == account }
         platforms.removeAll { $0.id == account }
         cash[account] = nil
         conversionSpread[account] = nil
@@ -1363,6 +1387,7 @@ final class PortfolioStore {
         payload.platforms = platforms
         payload.cashAssets = cashAssets
         payload.treasuryPositions = treasuryPositions
+        payload.cryptoPositions = cryptoPositions
         payload.cash = cash
         payload.conversionSpread = conversionSpread
         payload.tbszRules = tbszRules
@@ -1394,6 +1419,7 @@ final class PortfolioStore {
         platforms = payload.platforms
         cashAssets = payload.cashAssets
         treasuryPositions = payload.treasuryPositions
+        cryptoPositions = payload.cryptoPositions
         cash = payload.cash
         conversionSpread = payload.conversionSpread
         tbszRules = payload.tbszRules

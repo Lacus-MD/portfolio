@@ -35,6 +35,8 @@ enum PortfolioFile {
         var cashAssets: [CashAsset] = []
         /// Részletes állampapír-sorok a WebKincstár exportból.
         var treasuryPositions: [StateTreasuryPosition] = []
+        /// Csak olvasható kripto/wallet exportok pozíciói, HUF mérési értékkel.
+        var cryptoPositions: [CryptoPosition] = []
         /// Készpénz **számlánként**, azon belül devizánként.
         /// Nem globális: két brókernél két külön egyenleg van.
         var cash: [String: [String: Decimal]] = [:]
@@ -109,6 +111,8 @@ enum PortfolioFile {
             cashAssets       = try c.decodeIfPresent([CashAsset].self,        forKey: .cashAssets) ?? []
             treasuryPositions = try c.decodeIfPresent([StateTreasuryPosition].self,
                                                        forKey: .treasuryPositions) ?? []
+            cryptoPositions = try c.decodeIfPresent([CryptoPosition].self,
+                                                     forKey: .cryptoPositions) ?? []
             // Két alak fordulhat elő: a mostani (számla → deviza → összeg) és
             // a korábbi lapos (deviza → összeg). A régit a meglévő pozíciók
             // számlájához rendeljük, hogy ne vesszen el.

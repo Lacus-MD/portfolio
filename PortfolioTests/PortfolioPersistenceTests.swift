@@ -25,6 +25,17 @@ final class PortfolioPersistenceTests: XCTestCase {
             couponPct: Decimal(string: "6.50"),
             asOf: Date(timeIntervalSince1970: 1_700_000_000)
         )]
+        payload.cryptoPositions = [CryptoPosition(
+            id: "crypto-binance:BTC",
+            platform: "crypto-binance",
+            symbol: "BTC",
+            name: "Bitcoin",
+            quantity: Decimal(string: "0.025"),
+            currentValueHUF: 720_000,
+            investedValueHUF: 600_000,
+            asOf: Date(timeIntervalSince1970: 1_800_000_000),
+            source: "Binance"
+        )]
 
         let data = try JSONEncoder().encode(payload)
         let decoded = try PortfolioFile.decodePayload(data)
@@ -39,6 +50,8 @@ final class PortfolioPersistenceTests: XCTestCase {
         XCTAssertEqual(decoded.platformOrder, payload.platformOrder)
         XCTAssertEqual(decoded.treasuryPositions.first?.isin, "HU0000401234")
         XCTAssertEqual(decoded.treasuryPositions.first?.currentValueHUF, Decimal(1_025_000))
+        XCTAssertEqual(decoded.cryptoPositions.first?.symbol, "BTC")
+        XCTAssertEqual(decoded.cryptoPositions.first?.currentValueHUF, Decimal(720_000))
     }
 
     func testUnversionedBuild20PayloadIsExplicitlyUpgraded() throws {
