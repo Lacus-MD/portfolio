@@ -35,8 +35,9 @@ run without bank credentials, signing secrets, or a connected phone.
 - [ ] Five-to-seven-day TestFlight observation — deferred until a device and
   App Store Connect upload are available.
 
-Build 31 implementation is complete for these two feature slices. Release
-and runtime verification remain deferred because the host cannot start the
+Build 33 implementation is complete for the import-reconciliation,
+WebKincstár-detail, crypto-export and provider-gating slices. Release and
+runtime verification remain deferred because the host cannot start the
 CoreSimulator service and the physical iPhone is unavailable; the existing
 cloud-sync implementation was not changed.
 
