@@ -494,6 +494,7 @@ struct BreakdownWidgetView: View {
         case .savings:   return 1
         case .current:   return 2
         case .credit:    return 3
+        case .crypto:    return 4
         }
     }
 }
