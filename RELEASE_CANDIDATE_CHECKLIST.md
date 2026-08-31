@@ -5,9 +5,9 @@ run without bank credentials, signing secrets, or a connected phone.
 
 - [x] XcodeGen regenerated `Portfolio.xcodeproj` from `project.yml`.
 - [x] Unit-test target compiles for iPhoneOS without signing.
-- [x] All app, widget, share-extension, watch app, and watch widget targets
-  compile in the Release configuration with signing disabled for this
-  no-device pass.
+- [ ] All app, widget, share-extension, watch app, and watch widget targets
+  compile in the Build 30 Release configuration; the retry is currently
+  blocked by Xcode's `ObservationMacros` plugin service on the host.
 - [x] Build number is read from the generated app bundle Info.plist.
 - [x] iCloud sync envelope round-trip and revision conflict tests compile in
   the iPhoneOS unit-test target.

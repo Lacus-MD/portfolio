@@ -51,7 +51,7 @@ sikeres, a telefonos telepítés sikerült, és a commit felkerült GitHubra.
 | 27 | TestFlight Release Candidate | elkészült (telefonos ellenőrzés halasztva) | e01c963 |
 | 28 | Hosszú pull-down banki frissítés | elkészült (telefonos ellenőrzés halasztva) | 24848a9 |
 | 29 | iCloud szinkronizálás platformok és eszközök között | elkészült (telefonos ellenőrzés halasztva) | 24d1f93 · 57d19e7 |
-| 30 | Lightyear tört darabszámok és újraimportálás | folyamatban | — |
+| 30 | Lightyear tört darabszámok és újraimportálás | ellenőrzés alatt | 47b1d0b |
 
 Engedélyezett állapotok:
 
