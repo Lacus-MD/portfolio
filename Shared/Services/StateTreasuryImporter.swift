@@ -24,6 +24,10 @@ enum StateTreasuryImporter {
         var name: String
         var currentValueHUF: Decimal
         var investedValueHUF: Decimal?
+        var isin: String?
+        var nominalValue: Decimal?
+        var maturityDate: Date?
+        var couponPct: Decimal?
     }
 
     struct Result {
@@ -32,11 +36,12 @@ enum StateTreasuryImporter {
         var accountName: String
         var asset: CashAsset
         var positions: Int
+        var positionDetails: [StateTreasuryPosition]
         var warnings: [String]
     }
 
     private enum Column: Int {
-        case name, currentValue, investedValue
+        case name, currentValue, investedValue, isin, nominalValue, maturityDate, couponPct
     }
 
     /// Gyors felismerés a tartalomból, még a fájlnév nélkül.
@@ -78,8 +83,15 @@ enum StateTreasuryImporter {
             else { unknownRows += 1; continue }
             let name = parseName(row: row, header: header)
             let invested = parseAmount(value: value(.investedValue))
+            let isin = value(.isin).map(normalizeISIN)
+            let nominal = parseAmount(value: value(.nominalValue))
+            let maturity = parseDate(value: value(.maturityDate))
+            let coupon = parseAmount(value: value(.couponPct))
 
-            positions.append(Position(name: name, currentValueHUF: current, investedValueHUF: invested))
+            positions.append(Position(name: name, currentValueHUF: current,
+                                      investedValueHUF: invested, isin: isin,
+                                      nominalValue: nominal, maturityDate: maturity,
+                                      couponPct: coupon))
         }
 
         guard !positions.isEmpty else { throw ImportError.noPositions }
@@ -88,6 +100,19 @@ enum StateTreasuryImporter {
         let asOf = parseAsOfDate(text)
         let accountName = inferAccountName(from: text, fallback: accountHint)
         let accountID = inferAccountID(from: accountHint, text: text)
+        let positionDetails = positions.map { position in
+            StateTreasuryPosition(
+                id: stableID(for: position),
+                name: position.name,
+                isin: position.isin,
+                nominalValue: position.nominalValue,
+                currentValueHUF: position.currentValueHUF,
+                investedValueHUF: position.investedValueHUF,
+                maturityDate: position.maturityDate,
+                couponPct: position.couponPct,
+                asOf: asOf
+            )
+        }
 
         var warnings: [String] = []
         if unknownRows > 0 {
@@ -110,6 +135,7 @@ enum StateTreasuryImporter {
             accountName: accountName,
             asset: asset,
             positions: positions.count,
+            positionDetails: positionDetails,
             warnings: warnings
         )
     }
@@ -148,11 +174,25 @@ enum StateTreasuryImporter {
             if contains(v, any: ["megnevez", "termek", "ertekpapir", "kepviselo", "instrument", "name"]) {
                 return .name
             }
-            if contains(v, any: ["jelen", "aktual", "ertek", "brutto", "egyseges"]) {
-                return .currentValue
-            }
-            if contains(v, any: ["beszerzes", "vasarlas", "befizetes", "beadas", "eredeti", "osszeg"]) {
+            // A „Befizetés értéke” mezőben is szerepel az „érték”, ezért az
+            // eredeti/bekerülési jelzőket mindig a piaci érték előtt nézzük.
+            if contains(v, any: ["beszerzes", "bekerul", "vasarlas", "befizetes", "beadas", "eredeti", "invested", "cost"]) {
                 return .investedValue
+            }
+            if contains(v, any: ["isin", "valor", "azonosito"]) {
+                return .isin
+            }
+            if contains(v, any: ["nev ertek", "nevertek", "nominal", "darab", "mennyiseg", "quantity", "db"]) {
+                return .nominalValue
+            }
+            if contains(v, any: ["lejar", "esedek", "maturity", "due date"]) {
+                return .maturityDate
+            }
+            if contains(v, any: ["kamat", "hozam", "coupon", "interest rate"]) {
+                return .couponPct
+            }
+            if contains(v, any: ["jelen", "aktual", "piaci", "brutto", "egyseges", "current", "market", "ertek"]) {
+                return .currentValue
             }
             return nil
         }
@@ -164,7 +204,24 @@ enum StateTreasuryImporter {
 
     private static func parseAmount(value: String?) -> Decimal? {
         guard let raw = value else { return nil }
-        return HungarianCSV.number(raw.replacingOccurrences(of: "HUF", with: "").trimmingCharacters(in: .whitespaces))
+        return HungarianCSV.number(raw
+            .replacingOccurrences(of: "HUF", with: "", options: .caseInsensitive)
+            .replacingOccurrences(of: "%", with: "")
+            .trimmingCharacters(in: .whitespaces))
+    }
+
+    private static func parseDate(value: String?) -> Date? {
+        guard let value, !value.isEmpty else { return nil }
+        return parseAsOfDate(value)
+    }
+
+    private static func normalizeISIN(_ raw: String) -> String {
+        raw.uppercased().filter { $0.isLetter || $0.isNumber }
+    }
+
+    private static func stableID(for position: Position) -> String {
+        if let isin = position.isin, !isin.isEmpty { return "isin:\(isin)" }
+        return "name:\(normalize(position.name))"
     }
 
     private static func parseName(row: [String], header: [Column?]) -> String {

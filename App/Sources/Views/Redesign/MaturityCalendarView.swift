@@ -39,6 +39,9 @@ struct MaturityCalendarView: View {
                     Text("A megtakarítási sor az aktuális becslés alapján, a legutóbbi kivonat és kamat alapon becsült eseményt tartalmazza.")
                         .font(DS.meta)
                         .foregroundStyle(DS.Color.inkSoft(0.55))
+                    Text("Az állampapír-lejáratok csak akkor jelennek meg, ha a WebKincstár export külön lejárati dátumot tartalmaz.")
+                        .font(DS.meta)
+                        .foregroundStyle(DS.Color.inkSoft(0.55))
                 }
             } header: {
                 Text("Megjegyzés")
@@ -115,6 +118,7 @@ struct MaturityCalendarView: View {
         case .threeYear: return "3 éves forduló"
         case .fiveYear: return "5 éves adómentes lejárat"
         case .savingsRate: return "Megtakarítási frissítés"
+        case .treasuryMaturity: return "Állampapír-lejárat"
         }
     }
 
@@ -124,6 +128,7 @@ struct MaturityCalendarView: View {
         case .threeYear: return "3 ÉV"
         case .fiveYear: return "5 ÉV"
         case .savingsRate: return "KAMAT"
+        case .treasuryMaturity: return "LEJÁRAT"
         }
     }
 
@@ -133,6 +138,7 @@ struct MaturityCalendarView: View {
         case .threeYear: return "clock.badge.checkmark"
         case .fiveYear: return "checkmark.seal"
         case .savingsRate: return "percent"
+        case .treasuryMaturity: return "calendar.badge.exclamationmark"
         }
     }
 
@@ -142,6 +148,7 @@ struct MaturityCalendarView: View {
         case .threeYear: return DS.Color.positiveGreen
         case .fiveYear: return DS.Color.coral
         case .savingsRate: return DS.Color.iconFX
+        case .treasuryMaturity: return DS.Color.iconTime
         }
     }
 }

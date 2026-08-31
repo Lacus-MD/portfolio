@@ -313,10 +313,15 @@ struct SettingsView: View {
             } label: {
                 Label("Adatfrissességi központ", systemImage: "tray.full")
             }
+            NavigationLink {
+                ReconciliationView()
+            } label: {
+                Label("Import- és értékellenőrzés", systemImage: "checkmark.shield")
+            }
         } header: {
             Text("Fejlesztői eszközök")
         } footer: {
-            Text("Ezek a nézetek a teljes vagyon, a termékesemények és az adatok állapotát mutatják.")
+            Text("Ezek a nézetek a teljes vagyon, a termékesemények, az importok és az adatok állapotát mutatják.")
         }
     }
 

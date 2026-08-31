@@ -12,7 +12,9 @@
 		04C941EA967D7D7784E97613 /* PortfolioWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 776EFAF9C84C6001B0AC228C /* PortfolioWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		04FF079E0C941D43BB574005 /* PortfolioCloudSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCF53596136D904B20E294CB /* PortfolioCloudSyncTests.swift */; };
 		07181607FCF2F974597DB02E /* QuoteService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BCD13FA79C064576B49556F /* QuoteService.swift */; };
+		07B728D5A29FFAD10972078F /* ReconciliationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AD272D4F21CB5A39F60F745 /* ReconciliationTests.swift */; };
 		088A94510101985DC3086613 /* PortfolioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6409E86AD3E1228A68F44BF9 /* PortfolioApp.swift */; };
+		0A0C50F0DDFD9976F7C32D2E /* Reconciliation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C12CAA5E52BFF7C414BCC6C /* Reconciliation.swift */; };
 		0AEDCC626C3C0605246BA0BA /* TBSZRules.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEC626FE3713BDCF227BB285 /* TBSZRules.swift */; };
 		0BA4957E9414A67B434D7F0C /* PortfolioCloudSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 127F5ED86F930DF0948E39A0 /* PortfolioCloudSync.swift */; };
 		0BEE7DDFDDB0CA47E1B22425 /* PortfolioStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20EA9B2A7E86641C30872BBA /* PortfolioStorage.swift */; };
@@ -35,6 +37,7 @@
 		212BA9BADBFAEC555B86973B /* ChartScrubber.swift in Sources */ = {isa = PBXBuildFile; fileRef = A440B200E7B506084F928A53 /* ChartScrubber.swift */; };
 		22D418E9FA9BDD748FB05BBE /* PortfolioMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0BEB500D386C672E6E03B46 /* PortfolioMath.swift */; };
 		2364AE7141BEB1D80D2E2EAF /* StatementImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09C4A4A88154D45DC40A96F1 /* StatementImporter.swift */; };
+		2802B2EA8117A5945DAE0027 /* Reconciliation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C12CAA5E52BFF7C414BCC6C /* Reconciliation.swift */; };
 		2876C7599426DF2C3FCA9494 /* WatchedFolders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FD194A9EEDD958F079E3C21 /* WatchedFolders.swift */; };
 		288EA97BC34B1140084146B2 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA99B9E873978EC6DBAC4D19 /* AppTheme.swift */; };
 		296C6864B736A854FA2E5048 /* BankConnectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 412A2A5FF3C6873B6423E97A /* BankConnectionView.swift */; };
@@ -62,12 +65,14 @@
 		44FA652443698EBB946A4567 /* NewsItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D4A06C2C545E1D69335CBE0 /* NewsItem.swift */; };
 		45B7F748FAAF4279E42C17C2 /* PerformanceSignposts.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCB1BB2F6AF15BD19AAAEEB0 /* PerformanceSignposts.swift */; };
 		46759F138AAA0486C4CD1417 /* HoldingMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C8A705D287CC02D2D4667D4 /* HoldingMatcher.swift */; };
+		480C56E26AB38133F0231E05 /* StateTreasuryPosition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32C1EDA32BEE32C8A5567E5E /* StateTreasuryPosition.swift */; };
 		484EDD837C0A7A47382C413C /* Breathing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31E609A777AC653AA80EA8CD /* Breathing.swift */; };
 		496B5EE460341235E07CBA98 /* WatchSpark.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80B56E3B77512FBCF6D24DDD /* WatchSpark.swift */; };
 		4A94A4189295B9AFECBAB96C /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE9C1E1A14F9A4D1FE75A3C1 /* HomeView.swift */; };
 		4C8D2F3A83762D349ECCBAB7 /* PortfolioStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20EA9B2A7E86641C30872BBA /* PortfolioStorage.swift */; };
 		4E9D05AC1CFBB38D81C0DC7A /* NewsItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D4A06C2C545E1D69335CBE0 /* NewsItem.swift */; };
 		502BC6BAAB1E6132C41C3463 /* state-treasury.csv in Resources */ = {isa = PBXBuildFile; fileRef = 5D2B487B6D7D19DA154BE2E7 /* state-treasury.csv */; };
+		504C58354D7A802524927E9B /* ReconciliationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F0B840F297FDD4809FF6E9 /* ReconciliationView.swift */; };
 		50E993F65D57434A4FDD4D2F /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76CE5FABED82E569C36274B9 /* ShareViewController.swift */; };
 		583BB502E9E9581340E85040 /* FixtureLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50202C7A6054D6BD22C41A9D /* FixtureLoader.swift */; };
 		58D285ADAE65A666C65A50AA /* Inbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = F127D237DC8AF14B53FC9870 /* Inbox.swift */; };
@@ -112,6 +117,7 @@
 		92F08D2FAFB3D7F03E435A7C /* ImporterFixtureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EC54053BCF339CF0694CC02 /* ImporterFixtureTests.swift */; };
 		9709D0B65E9B82DD3F832BEF /* AllocationPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CB2A9DA4A7182FD97440001 /* AllocationPlan.swift */; };
 		975B928060E07AE96216E3D7 /* NewsImagePreloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7B717C27AF9B4EEBAFAA5D7 /* NewsImagePreloader.swift */; };
+		982058ABD7014CAC25E5DCCD /* StateTreasuryPosition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32C1EDA32BEE32C8A5567E5E /* StateTreasuryPosition.swift */; };
 		9D68BE8485B9D47E48792982 /* WatchSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB56E30850ED729B2770BD19 /* WatchSummary.swift */; };
 		9F578BE2A71111A3C82F1E0C /* CategoryPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5541C97E6670CAF98E6FEE6 /* CategoryPicker.swift */; };
 		A1257EEC9B311E0DBE3535D0 /* HoldingEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8412512291F7852C86C1945 /* HoldingEditorView.swift */; };
@@ -121,6 +127,7 @@
 		AD568B88BB87D57D05FE9E70 /* AllocationPlannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17B6E1758475175DABB83B8F /* AllocationPlannerView.swift */; };
 		AE434864315229886B7A124B /* NotificationRuleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 347A21860E5A3E9443F0BD3E /* NotificationRuleTests.swift */; };
 		AF1ACDA5123503749A80F8E4 /* PortfolioWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30DBD31B989A78E59ADC81DB /* PortfolioWidgets.swift */; };
+		AF531417A1C7A726CAD56500 /* PortfolioStore+Reconciliation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A89360ECD14AF57D65AA884 /* PortfolioStore+Reconciliation.swift */; };
 		B1ECB84DA780E1013CBC2C54 /* Analytics.swift in Sources */ = {isa = PBXBuildFile; fileRef = D96B9B3F0C043ED783DE491D /* Analytics.swift */; };
 		B62B8A0026DC3C2B5B44D6AE /* CreditCardStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DFD2A557AF572E6B449AECA /* CreditCardStatus.swift */; };
 		B66AFA31F0E8F3802C2CFFD4 /* Formatters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6777217D18F9F0A4C59386DD /* Formatters.swift */; };
@@ -264,6 +271,7 @@
 		09C4A4A88154D45DC40A96F1 /* StatementImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatementImporter.swift; sourceTree = "<group>"; };
 		0B5ABE1DA5D296F5BB194AE0 /* BackgroundRefreshCompletion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundRefreshCompletion.swift; sourceTree = "<group>"; };
 		0B87CADE4EEC59E010262CE2 /* WidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetViews.swift; sourceTree = "<group>"; };
+		0C12CAA5E52BFF7C414BCC6C /* Reconciliation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reconciliation.swift; sourceTree = "<group>"; };
 		0EC54053BCF339CF0694CC02 /* ImporterFixtureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImporterFixtureTests.swift; sourceTree = "<group>"; };
 		10B9AF24A1852643722B93EE /* DailyDigest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyDigest.swift; sourceTree = "<group>"; };
 		127F5ED86F930DF0948E39A0 /* PortfolioCloudSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortfolioCloudSync.swift; sourceTree = "<group>"; };
@@ -281,8 +289,10 @@
 		2CB609A6EE684479C5346D27 /* NewsReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewsReader.swift; sourceTree = "<group>"; };
 		30DBD31B989A78E59ADC81DB /* PortfolioWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortfolioWidgets.swift; sourceTree = "<group>"; };
 		31E609A777AC653AA80EA8CD /* Breathing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Breathing.swift; sourceTree = "<group>"; };
+		32C1EDA32BEE32C8A5567E5E /* StateTreasuryPosition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StateTreasuryPosition.swift; sourceTree = "<group>"; };
 		347A21860E5A3E9443F0BD3E /* NotificationRuleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationRuleTests.swift; sourceTree = "<group>"; };
 		39526EB8EBCEF975FB80E7D1 /* PortfolioPersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortfolioPersistenceTests.swift; sourceTree = "<group>"; };
+		3AD272D4F21CB5A39F60F745 /* ReconciliationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReconciliationTests.swift; sourceTree = "<group>"; };
 		3D317DFD1A99A954C631CAEC /* DataFreshnessCenterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataFreshnessCenterView.swift; sourceTree = "<group>"; };
 		3FD194A9EEDD958F079E3C21 /* WatchedFolders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchedFolders.swift; sourceTree = "<group>"; };
 		4040C213FDDC1BF801749977 /* EnableBankingClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnableBankingClient.swift; sourceTree = "<group>"; };
@@ -304,6 +314,7 @@
 		64D65A7D2144E565BB9D9162 /* NewsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewsView.swift; sourceTree = "<group>"; };
 		672D6A396199D471C64F1496 /* PortfolioShare.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = PortfolioShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		6777217D18F9F0A4C59386DD /* Formatters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Formatters.swift; sourceTree = "<group>"; };
+		69F0B840F297FDD4809FF6E9 /* ReconciliationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReconciliationView.swift; sourceTree = "<group>"; };
 		6DABB9674A8CFC4486C1D7BD /* CashFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CashFlow.swift; sourceTree = "<group>"; };
 		6E7D3CF5FC4CBB4D598BF8D3 /* RootTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootTabView.swift; sourceTree = "<group>"; };
 		6E96F8A442750D0147908A87 /* Reminders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reminders.swift; sourceTree = "<group>"; };
@@ -325,6 +336,7 @@
 		8A53C90EDFA8B996A7C9801A /* ConstituentWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConstituentWatcher.swift; sourceTree = "<group>"; };
 		8C8A705D287CC02D2D4667D4 /* HoldingMatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoldingMatcher.swift; sourceTree = "<group>"; };
 		9766CFBA1F188716FA0BF7AC /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		9A89360ECD14AF57D65AA884 /* PortfolioStore+Reconciliation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PortfolioStore+Reconciliation.swift"; sourceTree = "<group>"; };
 		9E1CA38EFECB6718D70685A4 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		A3C033DCED2DAB32F2805D72 /* DecimalAssertions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecimalAssertions.swift; sourceTree = "<group>"; };
 		A440B200E7B506084F928A53 /* ChartScrubber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartScrubber.swift; sourceTree = "<group>"; };
@@ -419,6 +431,7 @@
 				E0FD82CCF62E62D16A81C0A0 /* PlatformDetailView.swift */,
 				FC809DB616F43FDE68FE232F /* PullRefresh.swift */,
 				A9F16F12864EF973C67CCA2A /* ReadableWidth.swift */,
+				69F0B840F297FDD4809FF6E9 /* ReconciliationView.swift */,
 				6E7D3CF5FC4CBB4D598BF8D3 /* RootTabView.swift */,
 				FA94AC899631076702EBABFA /* ScenarioView.swift */,
 				9E1CA38EFECB6718D70685A4 /* SettingsView.swift */,
@@ -646,6 +659,7 @@
 				5A88D9C6CEA2F2E63B4365DB /* PortfolioIntents.swift */,
 				D0D76263864E1CA35343E919 /* PortfolioStore.swift */,
 				7A6B1A7175E25A80AD40DDD6 /* PortfolioStore+Platforms.swift */,
+				9A89360ECD14AF57D65AA884 /* PortfolioStore+Reconciliation.swift */,
 				6E96F8A442750D0147908A87 /* Reminders.swift */,
 				85A2E36911DA3C0672542F8E /* WatchBridge.swift */,
 				3FD194A9EEDD958F079E3C21 /* WatchedFolders.swift */,
@@ -685,6 +699,7 @@
 				BCF53596136D904B20E294CB /* PortfolioCloudSyncTests.swift */,
 				E07A233A200E9FCCBAF5C357 /* PortfolioMathTests.swift */,
 				39526EB8EBCEF975FB80E7D1 /* PortfolioPersistenceTests.swift */,
+				3AD272D4F21CB5A39F60F745 /* ReconciliationTests.swift */,
 				F569EAA2D16EC4550E6B03E1 /* ThemeAccessibilityTests.swift */,
 			);
 			path = PortfolioTests;
@@ -701,8 +716,10 @@
 				869281FF4F5669F14BEF9560 /* Holding.swift */,
 				1D4A06C2C545E1D69335CBE0 /* NewsItem.swift */,
 				B40064E67B411A1E0E6C86A4 /* Platform.swift */,
+				0C12CAA5E52BFF7C414BCC6C /* Reconciliation.swift */,
 				2A13CF2FF2A4D2E3603F6508 /* Scenario.swift */,
 				F0D05B618852A51F6EDEBFE1 /* Snapshot.swift */,
+				32C1EDA32BEE32C8A5567E5E /* StateTreasuryPosition.swift */,
 				AEC626FE3713BDCF227BB285 /* TBSZRules.swift */,
 				E038E86498126AE4ACF4A5BA /* TradeMarker.swift */,
 			);
@@ -1003,10 +1020,13 @@
 				22D418E9FA9BDD748FB05BBE /* PortfolioMath.swift in Sources */,
 				4C8D2F3A83762D349ECCBAB7 /* PortfolioStorage.swift in Sources */,
 				1216678B6676DEC2C788B54F /* PortfolioStore+Platforms.swift in Sources */,
+				AF531417A1C7A726CAD56500 /* PortfolioStore+Reconciliation.swift in Sources */,
 				6ABC87BC4125174752C39FED /* PortfolioStore.swift in Sources */,
 				70F075A79E61191168CC0DED /* PullRefresh.swift in Sources */,
 				839E6E9C5C4A0CEFB1CEC0D3 /* QuoteService.swift in Sources */,
 				3BCD4D92997CE136923818A3 /* ReadableWidth.swift in Sources */,
+				0A0C50F0DDFD9976F7C32D2E /* Reconciliation.swift in Sources */,
+				504C58354D7A802524927E9B /* ReconciliationView.swift in Sources */,
 				F11E29E2B1DDC39667D9C0DE /* Reminders.swift in Sources */,
 				44E6A34A0D243657CF9B7A17 /* RevolutImporter.swift in Sources */,
 				D029171D25C9674BD2F3F500 /* RootTabView.swift in Sources */,
@@ -1016,6 +1036,7 @@
 				E1511D67F87DC31AC2CB0E35 /* Snapshot.swift in Sources */,
 				7033B82F107BCDD2CABB842E /* SpendingAnalysis.swift in Sources */,
 				1545B01D6455C959EDA7A237 /* StateTreasuryImporter.swift in Sources */,
+				480C56E26AB38133F0231E05 /* StateTreasuryPosition.swift in Sources */,
 				11868EE51EC5DE2E5E79CD01 /* StatementImporter.swift in Sources */,
 				408DF48B69906BBF5268B790 /* String+PortfolioImport.swift in Sources */,
 				720E3EA235AE65201CD075C1 /* TBSZRules.swift in Sources */,
@@ -1050,6 +1071,7 @@
 				04FF079E0C941D43BB574005 /* PortfolioCloudSyncTests.swift in Sources */,
 				16D5061C7D30058BB5767D75 /* PortfolioMathTests.swift in Sources */,
 				E25FB2A9E9EF6953BA45D4EA /* PortfolioPersistenceTests.swift in Sources */,
+				07B728D5A29FFAD10972078F /* ReconciliationTests.swift in Sources */,
 				40AF96C35D826DB8AEE169DC /* ThemeAccessibilityTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1101,11 +1123,13 @@
 				0BEE7DDFDDB0CA47E1B22425 /* PortfolioStorage.swift in Sources */,
 				AF1ACDA5123503749A80F8E4 /* PortfolioWidgets.swift in Sources */,
 				07181607FCF2F974597DB02E /* QuoteService.swift in Sources */,
+				2802B2EA8117A5945DAE0027 /* Reconciliation.swift in Sources */,
 				FEE401052446567B7469B7C5 /* RevolutImporter.swift in Sources */,
 				3CD83477EB4B2E86ECB6AE46 /* Scenario.swift in Sources */,
 				8FEE5BD4FA99AC65AE0A7079 /* Snapshot.swift in Sources */,
 				CB1630F161A2F51D7DF50361 /* SpendingAnalysis.swift in Sources */,
 				D682C1C0FBDFFCB0C082CC6A /* StateTreasuryImporter.swift in Sources */,
+				982058ABD7014CAC25E5DCCD /* StateTreasuryPosition.swift in Sources */,
 				2364AE7141BEB1D80D2E2EAF /* StatementImporter.swift in Sources */,
 				44E780416E753740580A910C /* String+PortfolioImport.swift in Sources */,
 				0AEDCC626C3C0605246BA0BA /* TBSZRules.swift in Sources */,
@@ -1253,7 +1277,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 30;
+				CURRENT_PROJECT_VERSION = 31;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = YGU3DVQ6S8;
 				ENABLE_CODE_COVERAGE = NO;
@@ -1402,7 +1426,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 30;
+				CURRENT_PROJECT_VERSION = 31;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = YGU3DVQ6S8;
 				ENABLE_CODE_COVERAGE = NO;

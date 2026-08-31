@@ -14,6 +14,17 @@ final class PortfolioPersistenceTests: XCTestCase {
         payload.themeID = "monochrome-red"
         payload.allocationTargets = ["broker": 80]
         payload.platformOrder = ["broker"]
+        payload.treasuryPositions = [StateTreasuryPosition(
+            id: "treasury-allamkincstar:isin:HU0000401234",
+            name: "PMÁP 2032/I",
+            isin: "HU0000401234",
+            nominalValue: 1_000_000,
+            currentValueHUF: 1_025_000,
+            investedValueHUF: 950_000,
+            maturityDate: Date(timeIntervalSince1970: 1_800_000_000),
+            couponPct: Decimal(string: "6.50"),
+            asOf: Date(timeIntervalSince1970: 1_700_000_000)
+        )]
 
         let data = try JSONEncoder().encode(payload)
         let decoded = try PortfolioFile.decodePayload(data)
@@ -26,6 +37,8 @@ final class PortfolioPersistenceTests: XCTestCase {
         XCTAssertEqual(decoded.themeID, payload.themeID)
         XCTAssertEqual(decoded.allocationTargets, payload.allocationTargets)
         XCTAssertEqual(decoded.platformOrder, payload.platformOrder)
+        XCTAssertEqual(decoded.treasuryPositions.first?.isin, "HU0000401234")
+        XCTAssertEqual(decoded.treasuryPositions.first?.currentValueHUF, Decimal(1_025_000))
     }
 
     func testUnversionedBuild20PayloadIsExplicitlyUpgraded() throws {

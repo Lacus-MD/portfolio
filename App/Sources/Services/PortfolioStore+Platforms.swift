@@ -440,7 +440,33 @@ extension PortfolioStore {
             ))
         }
 
+        // A WebKincstár export may contain a security-specific maturity. Keep
+        // it separate from TBSZ milestones so a missing maturity column does
+        // not invent a date.
+        for position in treasuryPositions {
+            guard let maturity = position.maturityDate else { continue }
+            let subtitle: String
+            if let coupon = position.couponPct {
+                subtitle = "Állampapír · kamat \(Fmt.percentPlain(coupon.doubleValue, digits: 2))"
+            } else {
+                subtitle = "Állampapír · WebKincstár export"
+            }
+            events.append(MaturityCalendarEvent(
+                kind: .treasuryMaturity,
+                platformID: treasuryPlatformID(from: position.id),
+                title: "\(position.name): lejárat",
+                subtitle: subtitle,
+                date: maturity,
+                daysFromToday: daysFromToday(maturity)
+            ))
+        }
+
         return events.sorted { $0.date < $1.date }
+    }
+
+    private func treasuryPlatformID(from scopedID: String) -> String? {
+        guard let separator = scopedID.firstIndex(of: ":") else { return nil }
+        return String(scopedID[..<separator])
     }
 
     /// Adatfrissességi nézet, hogy gyorsan lásd miért tűnik furcsának az érték.

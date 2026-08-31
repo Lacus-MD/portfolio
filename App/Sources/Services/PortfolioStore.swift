@@ -33,6 +33,8 @@ final class PortfolioStore {
     private(set) var fees: [FeeItem] = []
     private(set) var platforms: [Platform] = []
     private(set) var cashAssets: [CashAsset] = []
+    /// Részletes WebKincstár sorok, platformonként.
+    private(set) var treasuryPositions: [StateTreasuryPosition] = []
     private(set) var cash: [String: [String: Decimal]] = [:]
     private(set) var conversionSpread: [String: Decimal] = [:]
     private(set) var tbszRules: TBSZRules?
@@ -675,10 +677,24 @@ final class PortfolioStore {
         let result = try StateTreasuryImporter.import(text: text, accountHint: accountHint)
 
         cashAssets.removeAll { $0.platform == result.platformID }
+        treasuryPositions.removeAll { $0.id.hasPrefix("\(result.platformID):") }
         deposits.removeAll { $0.account == result.platformID }
         upsertKind(.savings, id: result.platformID, name: result.accountName, monogram: "AK")
 
         cashAssets.append(result.asset)
+        treasuryPositions.append(contentsOf: result.positionDetails.map { position in
+            StateTreasuryPosition(
+                id: "\(result.platformID):\(position.id)",
+                name: position.name,
+                isin: position.isin,
+                nominalValue: position.nominalValue,
+                currentValueHUF: position.currentValueHUF,
+                investedValueHUF: position.investedValueHUF,
+                maturityDate: position.maturityDate,
+                couponPct: position.couponPct,
+                asOf: position.asOf
+            )
+        })
         saveSoon()
         await refresh(force: true)
 
@@ -1316,6 +1332,7 @@ final class PortfolioStore {
         // számla költései a Kiadások fülön ott maradnának, gazdátlanul.
         expenses.removeAll { $0.account == account }
         cashAssets.removeAll { $0.platform == account }
+        treasuryPositions.removeAll { $0.id.hasPrefix("\(account):") }
         platforms.removeAll { $0.id == account }
         cash[account] = nil
         conversionSpread[account] = nil
@@ -1345,6 +1362,7 @@ final class PortfolioStore {
         payload.fees = fees
         payload.platforms = platforms
         payload.cashAssets = cashAssets
+        payload.treasuryPositions = treasuryPositions
         payload.cash = cash
         payload.conversionSpread = conversionSpread
         payload.tbszRules = tbszRules
@@ -1375,6 +1393,7 @@ final class PortfolioStore {
         fees = payload.fees.sorted { $0.date < $1.date }
         platforms = payload.platforms
         cashAssets = payload.cashAssets
+        treasuryPositions = payload.treasuryPositions
         cash = payload.cash
         conversionSpread = payload.conversionSpread
         tbszRules = payload.tbszRules

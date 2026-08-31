@@ -46,6 +46,7 @@ struct MaturityCalendarEvent: Identifiable, Hashable {
         case threeYear           // TBSZ 3 éves forduló
         case fiveYear            // TBSZ 5 éves forduló
         case savingsRate         // megtakarítási számlán lévő becsült kamatkör
+        case treasuryMaturity    // WebKincstárból importált állampapír-lejárat
     }
 
     let id = UUID()
@@ -80,4 +81,3 @@ struct DataFreshnessItem: Identifiable, Hashable {
     let lastUpdated: Date?
     let state: FreshnessState
 }
-

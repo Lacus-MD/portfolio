@@ -52,6 +52,30 @@ sikeres, a telefonos telepítés sikerült, és a commit felkerült GitHubra.
 | 28 | Hosszú pull-down banki frissítés | elkészült (telefonos ellenőrzés halasztva) | 24848a9 |
 | 29 | iCloud szinkronizálás platformok és eszközök között | elkészült (telefonos ellenőrzés halasztva) | 24d1f93 · 57d19e7 |
 | 30 | Lightyear tört darabszámok és újraimportálás | ellenőrzés alatt | 47b1d0b |
+| 31 | Import-egyeztetés és részletes WebKincstár-sorok | ellenőrzés alatt | munkafolyamatban |
+
+### Következő fejlesztési sorrend (felhőszinkron kész)
+
+Az iCloud szinkronizálás (Mac és iPad között is) már kész, ezért ezt nem
+építjük újra. A további munkát kis, ellenőrizhető rétegekben végezzük:
+
+1. **Import-egyeztetés és anomáliák** — hiányzó árfolyam, régi egyenleg,
+   szokatlan darabszám, nem párosított átvezetés és MÁK-részlet/végösszeg
+   eltérés külön jelzést kap a Beállításokban.
+2. **WebKincstár-részletek és lejáratok** — a sorok név/ISIN/névérték/
+   bekerülés/lejárat/kamat mezőit megőrizzük; a lejáratok bekerülnek a
+   kamat- és lejárati naptárba.
+3. **Crypto read-only import** — csak exportfájl-alapú, helyi értékmegőrzés;
+   privát kulcsot, tranzakció-aláírást vagy automatikus vételt nem kezelünk.
+4. **Enable Banking** — opcionális, szolgáltatói szerződéshez és AISP/
+   consent-folyamathoz kötött integráció; offline import mindig működőképes
+   marad.
+5. **Release ellenőrzés** — unit/fordítás, Release build, eszközös smoke és
+   csak ezután TestFlight-megfigyelés.
+
+Az aktuális Build 31 az első két pont implementációját tartalmazza. A build és
+a runtime ellenőrzés a host Xcode plug-in/CoreSimulator korlátozása miatt még
+nem zárható le.
 
 Engedélyezett állapotok:
 

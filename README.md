@@ -235,6 +235,19 @@ kivonat eredetije eltűnik — egy bankkivonat archívum-érték.
 A 3. szint (Enable Banking PSD2) tudatosan nincs megépítve — a döntés és a
 kutatás a `Docs/import-automatizalas-terv.md`-ben.
 
+### Build 31 — import-egyeztetés és WebKincstár-részletek
+
+A Beállítások → Fejlesztői eszközök → **Import- és értékellenőrzés** nézete
+megmutatja, ha hiányzik egy árfolyam, régi egyenlegből számolunk, szokatlan a
+darabszám, nem párosul egy belső átvezetés, vagy a WebKincstár sorainak összege
+eltér a mentett végösszegtől. A WebKincstár CSV/TXT sorai külön is megmaradnak
+(ISIN, névérték, bekerülési érték, lejárat és kamat, ha az export tartalmazza),
+és a lejáratok bekerülnek a kamat- és lejárati naptárba.
+
+Ez továbbra is helyi, olvasó import: nem kér államkincstári jelszót és nem
+indít tranzakciót. Az iCloud szinkronizálás meglévő payload-rétege automatikusan
+viszi az új mezőt Mac, iPad és iPhone között.
+
 ## Költés-elemzés: fix vs. változó, futamidő, előfizetések
 
 `SpendingAnalysis` — a beolvasott tételekből, feltevés nélkül.

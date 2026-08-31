@@ -33,6 +33,8 @@ enum PortfolioFile {
         var platforms: [Platform] = []
         /// Kamatozó készpénz-eszközök (Revolut Savings, széf).
         var cashAssets: [CashAsset] = []
+        /// Részletes állampapír-sorok a WebKincstár exportból.
+        var treasuryPositions: [StateTreasuryPosition] = []
         /// Készpénz **számlánként**, azon belül devizánként.
         /// Nem globális: két brókernél két külön egyenleg van.
         var cash: [String: [String: Decimal]] = [:]
@@ -105,6 +107,8 @@ enum PortfolioFile {
             fees             = try c.decodeIfPresent([FeeItem].self,          forKey: .fees) ?? []
             platforms        = try c.decodeIfPresent([Platform].self,         forKey: .platforms) ?? []
             cashAssets       = try c.decodeIfPresent([CashAsset].self,        forKey: .cashAssets) ?? []
+            treasuryPositions = try c.decodeIfPresent([StateTreasuryPosition].self,
+                                                       forKey: .treasuryPositions) ?? []
             // Két alak fordulhat elő: a mostani (számla → deviza → összeg) és
             // a korábbi lapos (deviza → összeg). A régit a meglévő pozíciók
             // számlájához rendeljük, hogy ne vesszen el.

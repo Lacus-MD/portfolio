@@ -96,4 +96,24 @@ final class ImporterFixtureTests: XCTestCase {
         assertDecimalEqual(repeated.asset.balance, result.asset.balance)
         XCTAssertEqual(repeated.positions, result.positions)
     }
+
+    func testStateTreasuryDetailedColumnsAreKeptAndInvestmentValueIsNotConfused() throws {
+        let text = """
+        Államkincstár export;Megjegyzés
+        Állampapír táblázat;2026.08.23
+        Megnevezés;ISIN;Névérték;Jelenlegi érték;Befizetés értéke;Lejárat;Kamat
+        PMÁP 2032/I;HU0000401234;1000000;1 025 000,00 HUF;950 000,00 HUF;2032.05.24.;6,50%
+        """
+
+        let result = try StateTreasuryImporter.import(text: text, accountHint: "mak.csv")
+        let position = try XCTUnwrap(result.positionDetails.first)
+
+        XCTAssertEqual(result.positions, 1)
+        XCTAssertEqual(position.isin, "HU0000401234")
+        XCTAssertEqual(position.nominalValue, Decimal(1_000_000))
+        XCTAssertEqual(position.currentValueHUF, Decimal(1_025_000))
+        XCTAssertEqual(position.investedValueHUF, Decimal(950_000))
+        XCTAssertNotNil(position.maturityDate)
+        XCTAssertEqual(position.couponPct, Decimal(string: "6.50"))
+    }
 }
