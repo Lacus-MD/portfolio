@@ -76,6 +76,7 @@ struct PortfolioApp: App {
                 // előtérbe kerülés feldolgoz — a hívás olcsó, ha üres.
                 Task { [store, banking] in
                     await store.startup()
+                    await Reminders.MarketClose.schedule()
                     // A banki folyószámlák frissítése. Saját várakozási
                     // ideje van (6 óra), tehát ez a hívás olcsó, ha nem kell.
                     await banking.syncIfStale(store: store)
@@ -131,6 +132,7 @@ struct PortfolioApp: App {
                 await PaymentReminder.schedule(for: pair.store.creditCards.first)
                 try? Task.checkCancellation()
                 await Reminders.Statements.schedule()
+                await Reminders.MarketClose.schedule()
                 await pair.store.refresh()
                 try? Task.checkCancellation()
                 await pair.banking.syncIfStale(store: pair.store)

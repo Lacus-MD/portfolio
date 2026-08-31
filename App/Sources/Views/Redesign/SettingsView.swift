@@ -26,6 +26,7 @@ struct SettingsView: View {
     @State private var cardReminder = PaymentReminder.isEnabled
     @State private var statementReminder = Reminders.Statements.isEnabled
     @State private var consentReminder = Reminders.Consent.isEnabled
+    @State private var marketCloseReminder = Reminders.MarketClose.isEnabled
     @State private var marketAlerts = ActivityNotifications.Market.isEnabled
     @State private var bankAlerts = ActivityNotifications.Banking.isEnabled
     @State private var notificationsDenied = false
@@ -150,6 +151,10 @@ struct SettingsView: View {
                 get: { consentReminder },
                 set: { updateConsentReminder($0) }
             ))
+            Toggle("Piaczárási értesítés", isOn: Binding(
+                get: { marketCloseReminder },
+                set: { updateMarketCloseReminder($0) }
+            ))
             Toggle("Jelentős árfolyammozgás", isOn: Binding(
                 get: { marketAlerts },
                 set: { updateMarketAlerts($0) }
@@ -248,6 +253,20 @@ struct SettingsView: View {
         }
     }
 
+    private func updateMarketCloseReminder(_ enabled: Bool) {
+        marketCloseReminder = enabled
+        Task { @MainActor in
+            if enabled, await Reminders.requestPermission() == false {
+                marketCloseReminder = false
+                Reminders.MarketClose.isEnabled = false
+                notificationsDenied = true
+                return
+            }
+            Reminders.MarketClose.isEnabled = enabled
+            await Reminders.MarketClose.schedule()
+        }
+    }
+
     private func updateBankAlerts(_ enabled: Bool) {
         bankAlerts = enabled
         Task { @MainActor in
@@ -264,12 +283,14 @@ struct SettingsView: View {
     private var notificationFooter: String {
         let statementDay = Reminders.Statements.dayOfMonth
         let consentLeadDays = Reminders.Consent.leadDays
+        let marketClose = String(format: "%02d:%02d", Reminders.MarketClose.hour,
+                                 Reminders.MarketClose.minute)
         return "Helyi értesítések: az app nem küld pénzügyi adatot sehova. "
             + "A mozgásjelzés ±\(Fmt.percentPlain(ActivityNotifications.Market.thresholdPct, digits: 0)), "
             + "a banki küszöb \(Fmt.huf(ActivityNotifications.Banking.thresholdHUF)). "
             + "Ezek frissítéskor szólnak; a banki gyakoriságot a Bankkapcsolatnál állíthatod. "
             + "Az emlékeztetők: kártya −3 nap, kivonat minden hónap \(statementDay)-én, "
-            + "engedély −\(consentLeadDays) nap, reggel 9-kor."
+            + "engedély −\(consentLeadDays) nap, reggel 9-kor; piaczárás hétköznap \(marketClose)-kor."
     }
 
     @ViewBuilder

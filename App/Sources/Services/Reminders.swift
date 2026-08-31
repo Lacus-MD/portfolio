@@ -33,6 +33,56 @@ enum Reminders {
         return (try? await center.requestAuthorization(options: [.alert, .sound])) ?? false
     }
 
+    // MARK: - Piaczárási értesítés
+
+    /// Helyi értesítés az európai tőzsdenap végén.
+    ///
+    /// A VWCE és a legtöbb Lightyearen követett európai ETF szempontjából a
+    /// budapesti idő szerinti 17:30 a hasznos napi zárási pont. Hétvégére nem
+    /// időzítünk, mert akkor nincs tőzsdenapi zárás. Az értesítés szándékosan
+    /// általános: a tényleges napi értéket az app megnyitásakor friss árakkal
+    /// kell kiszámolni, nem egy előre beégetett értesítésszövegből.
+    enum MarketClose {
+        private static let prefix = "market-close-"
+        private static let key = "marketCloseNotificationOn"
+        static let hour = 17
+        static let minute = 30
+        static let timeZoneIdentifier = "Europe/Budapest"
+        /// Gregorian weekday values: Sunday = 1, Monday = 2, …, Saturday = 7.
+        static let weekdays = Array(2...6)
+
+        static var isEnabled: Bool {
+            get { UserDefaults.standard.bool(forKey: key) }
+            set { UserDefaults.standard.set(newValue, forKey: key) }
+        }
+
+        static func schedule() async {
+            let center = UNUserNotificationCenter.current()
+            let pending = await center.pendingNotificationRequests()
+            center.removePendingNotificationRequests(
+                withIdentifiers: pending.map(\.identifier).filter { $0.hasPrefix(prefix) })
+            guard isEnabled else { return }
+
+            let content = UNMutableNotificationContent()
+            content.title = "Piaczárás · Portfólió"
+            content.body = "A mai tőzsdenap lezárult. Nézd meg a portfólió aktuális értékét és napi változását."
+            content.sound = .default
+            content.interruptionLevel = .active
+            content.userInfo = ["kind": "market-close"]
+
+            for weekday in weekdays {
+                var components = DateComponents()
+                components.timeZone = TimeZone(identifier: timeZoneIdentifier)
+                components.weekday = weekday
+                components.hour = hour
+                components.minute = minute
+                let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+                try? await center.add(UNNotificationRequest(
+                    identifier: "\(prefix)\(weekday)", content: content, trigger: trigger))
+            }
+        }
+    }
+
     // MARK: - Havi kivonat-emlékeztető
 
     /// A bankkapcsolat a folyószámlákat magától hozza, de a megtakarítási

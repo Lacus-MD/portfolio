@@ -230,7 +230,7 @@ az éles provider-alkalmazást, szerződést és saját kulcsot a felhasználó 
 Közös titok nincs az appban, a privát kulcs készülék-helyi Keychainben marad,
 és a kivonat-import provider nélkül is teljes értékű.
 
-### Build 34 — import-egyeztetés, WebKincstár-részletek, crypto export, banki provider-állapot és érték-egyeztetés
+### Build 35 — import-egyeztetés, WebKincstár-részletek, crypto export, banki provider-állapot, érték-egyeztetés és piaczárási értesítés
 
 A Beállítások → Fejlesztői eszközök → **Import- és értékellenőrzés** nézete
 megmutatja, ha hiányzik egy árfolyam, régi egyenlegből számolunk, szokatlan a
