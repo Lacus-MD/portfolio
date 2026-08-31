@@ -38,6 +38,34 @@ struct BankConnectionView: View {
             }
 
             Section {
+                let status = banking.configurationStatus
+                HStack(spacing: 10) {
+                    Image(systemName: status.systemImage)
+                        .foregroundStyle(status.tint == .positive ? .green : DS.Color.iconTime)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(status.title).font(DS.rowTitle)
+                        Text(status.detail)
+                            .font(DS.meta)
+                            .foregroundStyle(DS.Color.inkSoft(0.55))
+                    }
+                }
+                if let name = banking.applicationName {
+                    LabeledContent("Alkalmazás", value: name)
+                }
+                if let environment = banking.applicationEnvironment,
+                   !environment.isEmpty {
+                    LabeledContent("Környezet", value: environment.capitalized)
+                }
+                if let checked = banking.configurationVerifiedAt {
+                    LabeledContent("Ellenőrizve", value: checked.formatted(date: .abbreviated, time: .shortened))
+                }
+            } header: {
+                Text("Provider állapota")
+            } footer: {
+                Text("Az Enable Banking külső szolgáltató: az app nem tartalmaz közös API-kulcsot és nem végez átutalást. Éles használathoz saját, aktív provider-alkalmazás kell. Ha ezt nem állítod be, a PDF/CSV kivonat-import változatlanul működik.")
+            }
+
+            Section {
                 TextField("Application ID", text: $banking.applicationID)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
@@ -64,7 +92,7 @@ struct BankConnectionView: View {
             } header: {
                 Text("Enable Banking alkalmazás")
             } footer: {
-                Text("A privát kulcs csak a telefon Keychainjében marad. Nem kerül a portfóliófájlba és nem szinkronizálódik iCloudon.")
+                Text("A privát kulcs csak a készülék Keychainjében marad. Nem kerül a portfóliófájlba és nem szinkronizálódik iCloudon. A provider díjazását és éles hozzáférését nem az app kezeli.")
             }
 
             Section {

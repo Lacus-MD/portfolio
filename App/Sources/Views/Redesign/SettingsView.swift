@@ -171,10 +171,19 @@ struct SettingsView: View {
             NavigationLink {
                 BankConnectionView()
             } label: {
-                Label("Enable Banking", systemImage: "building.columns")
+                HStack(spacing: 12) {
+                    Label("Enable Banking", systemImage: "building.columns")
+                    Spacer(minLength: 8)
+                    Text(banking.summary)
+                        .font(DS.meta)
+                        .foregroundStyle(DS.Color.inkSoft(0.5))
+                        .lineLimit(1)
+                }
             }
         } header: {
             Text("Bankkapcsolat")
+        } footer: {
+            Text("Opcionális, read-only banki kapcsolat. A kivonat-importhoz és az iCloud-szinkronhoz nem szükséges provider-fiók.")
         }
     }
 

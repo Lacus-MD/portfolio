@@ -608,6 +608,7 @@ enum EnableBankingError: LocalizedError {
     case decoding(String)
     case noOTPBank
     case noSession
+    case configurationNotVerified
 
     var errorDescription: String? {
         switch self {
@@ -624,6 +625,8 @@ enum EnableBankingError: LocalizedError {
         case .decoding(let message): "Az Enable Banking új vagy váratlan adatot küldött: \(message)"
         case .noOTPBank: "Az OTP Bank Hungary nem található az Enable Banking magyar banklistájában."
         case .noSession: "Még nincs összekapcsolt bankszámla."
+        case .configurationNotVerified:
+            "Előbb ellenőrizd az Enable Banking alkalmazást. Élő banki lekérés csak aktív, engedélyezett konfigurációval indulhat."
         }
     }
 }

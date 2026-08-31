@@ -5,12 +5,91 @@ import UIKit
 @MainActor
 @Observable
 final class EnableBankingService {
+    /// Az Enable Banking nem kötelező az app használatához: a kivonat-import
+    /// önállóan is teljes értékű marad. Ez a státusz azt teszi egyértelművé,
+    /// hogy a felhasználónak mi a következő konkrét teendője.
+    enum ConfigurationStatus: Hashable {
+        case missingApplicationID
+        case missingRedirectURL
+        case missingPrivateKey
+        case needsVerification
+        case providerInactive
+        case ready
+        case connected
+        case reauthorizationRequired
+
+        var title: String {
+            switch self {
+            case .missingApplicationID: "Application ID hiányzik"
+            case .missingRedirectURL: "HTTPS callback hiányzik"
+            case .missingPrivateKey: "Privát kulcs hiányzik"
+            case .needsVerification: "Ellenőrzés szükséges"
+            case .providerInactive: "Szolgáltatói aktiválás szükséges"
+            case .ready: "Kapcsolódásra kész"
+            case .connected: "Kapcsolódva"
+            case .reauthorizationRequired: "Újraengedélyezés szükséges"
+            }
+        }
+
+        var systemImage: String {
+            switch self {
+            case .missingApplicationID, .missingRedirectURL, .missingPrivateKey:
+                "exclamationmark.circle"
+            case .needsVerification, .providerInactive:
+                "checkmark.shield"
+            case .ready:
+                "checkmark.circle"
+            case .connected:
+                "checkmark.shield.fill"
+            case .reauthorizationRequired:
+                "clock.badge.exclamationmark"
+            }
+        }
+
+        var detail: String {
+            switch self {
+            case .missingApplicationID:
+                "Az Enable Banking Control Panelből származó Application ID szükséges."
+            case .missingRedirectURL:
+                "HTTPS callback címet adj meg, amely pontosan szerepel a provider alkalmazásában."
+            case .missingPrivateKey:
+                "Importáld a provider által kiadott RSA .pem kulcsot; ez csak ezen a készüléken marad."
+            case .needsVerification:
+                "A mezők megadása után ellenőrizd az alkalmazást, mielőtt banki adatot kérnénk le."
+            case .providerInactive:
+                "A provider alkalmazása inaktív. A Control Panelen fejezd be az „Activate by linking accounts” lépést."
+            case .ready:
+                "A provider aktív; most már kiválaszthatsz egy magyar bankot és elindíthatod a jóváhagyást."
+            case .connected:
+                "Az egyenlegek és a tranzakciók read-only módon, a jóváhagyott banki kapcsolaton érkeznek."
+            case .reauthorizationRequired:
+                "Legalább egy banki hozzájárulás lejárt. Újra kell engedélyezni; a korábbi adatok nem vesznek el."
+            }
+        }
+
+        var tint: StatusTint {
+            switch self {
+            case .missingApplicationID, .missingRedirectURL, .missingPrivateKey,
+                 .needsVerification, .providerInactive, .reauthorizationRequired:
+                .attention
+            case .ready, .connected:
+                .positive
+            }
+        }
+    }
+
+    enum StatusTint { case attention, positive }
+
+    @ObservationIgnored private let defaults: UserDefaults
     var applicationID: String
     var redirectURL: String
     var banks: [EBASPSP] = []
     var selectedBankID: String
     var applicationName: String?
+    var applicationEnvironment: String?
     var applicationIsActive = false
+    private(set) var configurationVerifiedAt: Date?
+    private(set) var verifiedConfigurationKey: String?
     var isWorking = false
     var statusMessage: String?
     var lastError: String?
@@ -57,12 +136,26 @@ final class EnableBankingService {
         static let selectedBankID = "enableBanking.selectedBankID"
         static let accountCount = "enableBanking.accountCount"
         static let lastSync = "enableBanking.lastSync"
+        static let applicationName = "enableBanking.applicationName"
+        static let applicationEnvironment = "enableBanking.applicationEnvironment"
+        static let applicationIsActive = "enableBanking.applicationIsActive"
+        static let configurationVerifiedAt = "enableBanking.configurationVerifiedAt"
+        static let verifiedConfigurationKey = "enableBanking.verifiedConfigurationKey"
+        static let autoSync = "enableBanking.autoSync"
     }
 
     init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         applicationID = defaults.string(forKey: Key.applicationID) ?? ""
         redirectURL = defaults.string(forKey: Key.redirectURL) ?? ""
         selectedBankID = defaults.string(forKey: Key.selectedBankID) ?? ""
+        applicationName = defaults.string(forKey: Key.applicationName)
+        applicationEnvironment = defaults.string(forKey: Key.applicationEnvironment)
+        applicationIsActive = defaults.bool(forKey: Key.applicationIsActive)
+        let verificationTimestamp = defaults.double(forKey: Key.configurationVerifiedAt)
+        configurationVerifiedAt = verificationTimestamp > 0
+            ? Date(timeIntervalSince1970: verificationTimestamp) : nil
+        verifiedConfigurationKey = defaults.string(forKey: Key.verifiedConfigurationKey)
         if let data = defaults.data(forKey: Key.connections),
            let stored = try? JSONDecoder().decode([EBConnection].self, from: data) {
             connections = stored
@@ -83,11 +176,45 @@ final class EnableBankingService {
             && validRedirectURL != nil && hasPrivateKey
     }
     var isConnected: Bool { !connections.isEmpty }
+    /// Csak a sikeresen ellenőrzött, aktív provider-alkalmazás indíthat élő
+    /// API-hívást. A pusztán kitöltött mezők nem elegendők.
+    private var canUseProvider: Bool {
+        switch configurationStatus {
+        case .ready, .connected, .reauthorizationRequired: true
+        default: false
+        }
+    }
+
+    private var configurationKey: String {
+        [applicationID, redirectURL]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .joined(separator: "|")
+    }
+
+    var configurationStatus: ConfigurationStatus {
+        if applicationID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return .missingApplicationID
+        }
+        guard validRedirectURL != nil else { return .missingRedirectURL }
+        guard hasPrivateKey else { return .missingPrivateKey }
+        guard verifiedConfigurationKey == configurationKey,
+              configurationVerifiedAt != nil else { return .needsVerification }
+        guard applicationIsActive else { return .providerInactive }
+        if isConnected {
+            let hasExpired = connections.contains {
+                guard let until = $0.validUntil else { return false }
+                return until <= Date()
+            }
+            return hasExpired ? .reauthorizationRequired : .connected
+        }
+        return .ready
+    }
 
     var summary: String {
-        guard isConnected else {
-            return isConfigured ? "Beállítva, még nincs kapcsolódva" : "Nincs beállítva"
+        if configurationStatus == .reauthorizationRequired {
+            return "Újraengedélyezés szükséges"
         }
+        guard isConnected else { return configurationStatus.title }
         let accounts = connections.reduce(0) { $0 + $1.accountCount }
         let banks = connections.count == 1 ? connections[0].bankName : "\(connections.count) bank"
         return "\(banks) · \(accounts) számla"
@@ -115,14 +242,25 @@ final class EnableBankingService {
             try persistConfiguration()
             let application = try await client().application()
             applicationName = application.name
+            applicationEnvironment = application.environment
             applicationIsActive = application.active
+            persistConfigurationCheck()
             guard application.active else {
+                configurationVerifiedAt = nil
+                verifiedConfigurationKey = nil
+                persistConfigurationCheck()
                 throw EnableBankingError.callback("Az Enable Banking alkalmazás még inaktív. A Control Panelen az „Activate by linking accounts” lépést kell befejezni.")
             }
             if let redirect = validRedirectURL,
                !application.redirectURLs.contains(redirect.absoluteString) {
+                configurationVerifiedAt = nil
+                verifiedConfigurationKey = nil
+                persistConfigurationCheck()
                 throw EnableBankingError.callback("A callback cím nincs az Enable Banking alkalmazás engedélyezett címei között.")
             }
+            configurationVerifiedAt = Date()
+            verifiedConfigurationKey = configurationKey
+            persistConfigurationCheck()
             statusMessage = "Az Enable Banking alkalmazás aktív és elérhető."
         }
     }
@@ -130,11 +268,12 @@ final class EnableBankingService {
     func loadBanks() async {
         await run {
             try persistConfiguration()
+            guard canUseProvider else { throw EnableBankingError.configurationNotVerified }
             let loaded = try await client().banks()
             banks = loaded.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
             if selectedBank == nil, let otp = otpBank(in: loaded) {
                 selectedBankID = otp.id
-                UserDefaults.standard.set(otp.id, forKey: Key.selectedBankID)
+                defaults.set(otp.id, forKey: Key.selectedBankID)
             }
             statusMessage = "\(loaded.count) magyar bank elérhető."
         }
@@ -143,13 +282,14 @@ final class EnableBankingService {
     func connect(store: PortfolioStore) async {
         await run {
             try persistConfiguration()
+            guard canUseProvider else { throw EnableBankingError.configurationNotVerified }
             let available = banks.isEmpty ? try await client().banks() : banks
             if banks.isEmpty { banks = available }
             guard let bank = selectedBank ?? otpBank(in: available) else {
                 throw EnableBankingError.noOTPBank
             }
             selectedBankID = bank.id
-            UserDefaults.standard.set(bank.id, forKey: Key.selectedBankID)
+            defaults.set(bank.id, forKey: Key.selectedBankID)
 
             let state = Self.secureState()
             let validUntil = EnableBankingClient.consentValidUntil(for: bank)
@@ -185,14 +325,20 @@ final class EnableBankingService {
     }
 
     func sync(store: PortfolioStore) async {
-        await run { try await syncNow(store: store) }
+        await run {
+            guard canUseProvider else { throw EnableBankingError.configurationNotVerified }
+            try await syncNow(store: store)
+        }
     }
 
     /// A teljes engedélyezett előzmény behozása. KÜLÖN gomb, mert a bank
     /// ilyenkor megerősítést kér — az OTP SMS-ben, laponként. Egyszer
     /// érdemes lefuttatni, aztán soha többé.
     func fetchFullHistory(store: PortfolioStore) async {
-        await run { try await syncNow(store: store, fullHistory: true) }
+        await run {
+            guard canUseProvider else { throw EnableBankingError.configurationNotVerified }
+            try await syncNow(store: store, fullHistory: true)
+        }
     }
 
     /// Automatikus frissítés — előtérbe kerüléskor és a napi háttérfeladatban.
@@ -229,13 +375,13 @@ final class EnableBankingService {
     }
 
     var autoSync: AutoSync {
-        get { AutoSync(rawValue: UserDefaults.standard.string(forKey: "enableBanking.autoSync")
+        get { AutoSync(rawValue: defaults.string(forKey: Key.autoSync)
                        ?? AutoSync.daily.rawValue) ?? .daily }
-        set { UserDefaults.standard.set(newValue.rawValue, forKey: "enableBanking.autoSync") }
+        set { defaults.set(newValue.rawValue, forKey: Key.autoSync) }
     }
 
     func syncIfStale(store: PortfolioStore) async {
-        guard isConfigured, !connections.isEmpty, !isWorking else { return }
+        guard canUseProvider, !connections.isEmpty, !isWorking else { return }
         guard let interval = autoSync.interval else { return }
         if let lastSync, Date().timeIntervalSince(lastSync) < interval { return }
         // Lejárt engedélyű bankot nem hívunk fölöslegesen: a `syncNow`
@@ -272,10 +418,17 @@ final class EnableBankingService {
         applicationID = ""
         redirectURL = ""
         applicationName = nil
+        applicationEnvironment = nil
         applicationIsActive = false
-        let defaults = UserDefaults.standard
+        configurationVerifiedAt = nil
+        verifiedConfigurationKey = nil
         defaults.removeObject(forKey: Key.applicationID)
         defaults.removeObject(forKey: Key.redirectURL)
+        defaults.removeObject(forKey: Key.applicationName)
+        defaults.removeObject(forKey: Key.applicationEnvironment)
+        defaults.removeObject(forKey: Key.applicationIsActive)
+        defaults.removeObject(forKey: Key.configurationVerifiedAt)
+        defaults.removeObject(forKey: Key.verifiedConfigurationKey)
         statusMessage = "Az Enable Banking adatok törölve."
         lastError = nil
     }
@@ -294,8 +447,8 @@ final class EnableBankingService {
         guard !applicationID.isEmpty else { throw EnableBankingError.missingConfiguration }
         guard validRedirectURL != nil else { throw EnableBankingError.invalidRedirectURL }
         guard hasPrivateKey else { throw EnableBankingError.missingPrivateKey }
-        UserDefaults.standard.set(applicationID, forKey: Key.applicationID)
-        UserDefaults.standard.set(redirectURL, forKey: Key.redirectURL)
+        defaults.set(applicationID, forKey: Key.applicationID)
+        defaults.set(redirectURL, forKey: Key.redirectURL)
     }
 
     private func client() throws -> EnableBankingClient {
@@ -416,7 +569,6 @@ final class EnableBankingService {
     }
 
     private func persistConnections() {
-        let defaults = UserDefaults.standard
         defaults.set(try? JSONEncoder().encode(connections), forKey: Key.connections)
         defaults.set(lastSync?.timeIntervalSince1970 ?? 0, forKey: Key.lastSync)
         // A régi, egy-munkamenetes kulcsok már nem kellenek.
@@ -428,12 +580,32 @@ final class EnableBankingService {
     private func clearSession() {
         connections = []
         lastSync = nil
-        let defaults = UserDefaults.standard
         defaults.removeObject(forKey: Key.connections)
         defaults.removeObject(forKey: Key.sessionID)
         defaults.removeObject(forKey: Key.bankName)
         defaults.removeObject(forKey: Key.accountCount)
         defaults.removeObject(forKey: Key.lastSync)
+    }
+
+    private func persistConfigurationCheck() {
+        if let applicationName {
+            defaults.set(applicationName, forKey: Key.applicationName)
+        } else {
+            defaults.removeObject(forKey: Key.applicationName)
+        }
+        if let applicationEnvironment {
+            defaults.set(applicationEnvironment, forKey: Key.applicationEnvironment)
+        } else {
+            defaults.removeObject(forKey: Key.applicationEnvironment)
+        }
+        defaults.set(applicationIsActive, forKey: Key.applicationIsActive)
+        defaults.set(configurationVerifiedAt?.timeIntervalSince1970 ?? 0,
+                     forKey: Key.configurationVerifiedAt)
+        if let verifiedConfigurationKey {
+            defaults.set(verifiedConfigurationKey, forKey: Key.verifiedConfigurationKey)
+        } else {
+            defaults.removeObject(forKey: Key.verifiedConfigurationKey)
+        }
     }
 
     private func otpBank(in banks: [EBASPSP]) -> EBASPSP? {
@@ -467,4 +639,3 @@ final class EnableBankingService {
         return UUID().uuidString
     }
 }
-

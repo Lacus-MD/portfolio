@@ -54,6 +54,7 @@ sikeres, a telefonos telepítés sikerült, és a commit felkerült GitHubra.
 | 30 | Lightyear tört darabszámok és újraimportálás | ellenőrzés alatt | 47b1d0b |
 | 31 | Import-egyeztetés és részletes WebKincstár-sorok | ellenőrzés alatt | munkafolyamatban |
 | 32 | Crypto read-only export és HUF értékmegőrzés | ellenőrzés alatt | munkafolyamatban |
+| 33 | Enable Banking provider-állapot és biztonságos élesítés | ellenőrzés alatt | munkafolyamatban |
 
 ### Következő fejlesztési sorrend (felhőszinkron kész)
 
@@ -69,12 +70,13 @@ Az iCloud szinkronizálás (Mac és iPad között is) már kész, ezért ezt nem
 3. **Crypto read-only import** — csak exportfájl-alapú, helyi értékmegőrzés;
    privát kulcsot, tranzakció-aláírást vagy automatikus vételt nem kezelünk.
 4. **Enable Banking** — opcionális, szolgáltatói szerződéshez és AISP/
-   consent-folyamathoz kötött integráció; offline import mindig működőképes
-   marad.
+   consent-folyamathoz kötött integráció; a kliens read-only, a provider
+   aktiválása és a felhasználói kulcs készülék-helyi; offline import mindig
+   működőképes marad.
 5. **Release ellenőrzés** — unit/fordítás, Release build, eszközös smoke és
    csak ezután TestFlight-megfigyelés.
 
-Az aktuális Build 32 az első három pont implementációját tartalmazza. A build és
+Az aktuális Build 33 az első négy pont implementációját tartalmazza. A build és
 a runtime ellenőrzés a host Xcode plug-in/CoreSimulator korlátozása miatt még
 nem zárható le.
 

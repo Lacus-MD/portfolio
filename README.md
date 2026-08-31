@@ -232,10 +232,12 @@ megy. A lánc, minden eleme mérve:
 almappába kerül. A figyelővel együtt a törlés azt jelentette volna, hogy a
 kivonat eredetije eltűnik — egy bankkivonat archívum-érték.
 
-A 3. szint (Enable Banking PSD2) tudatosan nincs megépítve — a döntés és a
-kutatás a `Docs/import-automatizalas-terv.md`-ben.
+A 3. szint (Enable Banking PSD2) read-only kliensként beépült, de opcionális:
+az éles provider-alkalmazást, szerződést és saját kulcsot a felhasználó kezeli.
+Közös titok nincs az appban, a privát kulcs készülék-helyi Keychainben marad,
+és a kivonat-import provider nélkül is teljes értékű.
 
-### Build 32 — import-egyeztetés, WebKincstár-részletek és crypto export
+### Build 33 — import-egyeztetés, WebKincstár-részletek, crypto export és banki provider-állapot
 
 A Beállítások → Fejlesztői eszközök → **Import- és értékellenőrzés** nézete
 megmutatja, ha hiányzik egy árfolyam, régi egyenlegből számolunk, szokatlan a
@@ -252,6 +254,11 @@ Crypto/wallet CSV-kből ugyanígy csak az exportált, HUF-ban megadott mérési
 értéket és opcionális bekerülést tartjuk meg. A képernyőn ez külön „Kripto
 wallet” platformként jelenik meg; élő árfolyam, privát kulcs és kereskedési
 művelet nincs benne.
+
+Az Enable Banking képernyőn külön látszik a hiányzó Application ID, callback,
+privát kulcs, provider-ellenőrzés, inaktív provider vagy lejárt hozzájárulás.
+Élő banki API-hívás csak sikeresen ellenőrzött, aktív konfigurációval indul;
+ellenkező esetben a helyi PDF/CSV kivonat-import működik tovább.
 
 ## Költés-elemzés: fix vs. változó, futamidő, előfizetések
 
