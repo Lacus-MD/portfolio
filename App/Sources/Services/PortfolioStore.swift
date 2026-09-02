@@ -83,6 +83,7 @@ final class PortfolioStore {
     /// az eredmény is azonos — nem kell újraszámolni.
     struct DerivedStamp: Equatable {
         let holdings: Int, deposits: Int, platforms: Int, cashAssets: Int
+        let cryptoPositions: Int
         let quotes: Int, cash: Int
         /// A sorrend TARTALMA, nem a hossza: átrendezéskor a darabszám
         /// ugyanaz marad, az összesítés sorrendje mégis más.
@@ -94,6 +95,10 @@ final class PortfolioStore {
         /// USD-árfolyam nem érvénytelenítette a gyorsítótárat.
         let usdRate: Decimal
         let quotesSum: Decimal
+        /// Crypto exports carry their valuation in the position itself rather
+        /// than in `quotes`; include both count and value so a fresh import
+        /// invalidates the derived platform caches immediately.
+        let cryptoValue: Decimal
         /// Minden mentés lépteti. A puszta DARABSZÁM nem elég: egy kivonat
         /// újraolvasása töröl és visszatesz ugyanannyi tételt, más
         /// összegekkel — a számláló ezt is elkapja.
@@ -111,6 +116,7 @@ final class PortfolioStore {
     var derivedStamp: DerivedStamp {
         DerivedStamp(holdings: holdings.count, deposits: deposits.count,
                      platforms: platforms.count, cashAssets: cashAssets.count,
+                     cryptoPositions: cryptoPositions.count,
                      quotes: quotes.count, cash: cash.count,
                      orderHash: platformOrder.hashValue,
                      spreadHash: conversionSpread.hashValue,
@@ -118,6 +124,7 @@ final class PortfolioStore {
                      // Az árfolyamok ÉRTÉKE is számít, nem csak a darabszámuk:
                      // frissítéskor a kulcsok ugyanazok maradnak.
                      quotesSum: quotes.values.reduce(Decimal(0)) { $0 + $1.price },
+                     cryptoValue: cryptoPositions.reduce(Decimal(0)) { $0 + $1.currentValueHUF },
                      mutation: mutationCount)
     }
     /// A kártyák kézi sorrendje. Írásra a `movePlatforms` való — az ment is.
@@ -658,6 +665,12 @@ final class PortfolioStore {
         // Csak ENNEK a számlának az adatát cseréljük — a többi marad.
         cash[account] = result.cash
         conversionSpread[account] = result.conversionSpread
+        // A Lightyear crypto-trade sorai ugyanahhoz a számlához tartoznak,
+        // de nincs ISIN-jük, ezért a securities tömb mellett külön tároljuk.
+        // Újraimportáláskor ezt a számlát is teljesen lecseréljük, különben
+        // minden export duplázná az ETH/SOL/UNI mennyiséget.
+        cryptoPositions.removeAll { $0.platform == account }
+        cryptoPositions.append(contentsOf: result.cryptoPositions)
 
         holdings.append(contentsOf: result.holdings.map { holding in
             guard let knownYear else { return holding }

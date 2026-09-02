@@ -8,6 +8,10 @@ struct StatementImporter {
 
     struct Result {
         var holdings: [Holding]
+        /// Lightyear crypto trades have no ISIN. They are kept separately
+        /// from securities, while still belonging to the same Lightyear
+        /// account and cash ledger.
+        var cryptoPositions: [CryptoPosition]
         var deposits: [Deposit]
         var fees: [FeeItem]
         /// Devizánkénti készpénzegyenleg a kivonat végén (ehhez a számlához).
@@ -134,6 +138,11 @@ struct StatementImporter {
         var warnings: [String] = []
         var positions: [String: (qty: Decimal, costEUR: Decimal, costHUF: Decimal,
                                  ticker: String, ccy: String)] = [:]
+        /// Lightyear's crypto trades use an empty ISIN and a ticker (ETH,
+        /// SOL, UNI, ...). The export has no live crypto valuation, so we
+        /// retain net quantity and historical acquisition cost only.
+        var crypto: [String: (qty: Decimal, costEUR: Decimal, costHUF: Decimal,
+                              ticker: String, ccy: String, asOf: Date?)] = [:]
         var deposits: [Deposit] = []
         var fees: [FeeItem] = []
         var cash: [String: Decimal] = [:]
@@ -188,6 +197,46 @@ struct StatementImporter {
                 warnings.append("Nem forintos befizetés (\(row.ccy)) — az XIRR-ből kimarad.")
 
             case "Buy", "Sell":
+                if row.isin.isEmpty, Self.isCryptoTicker(row.ticker) {
+                    guard row.quantity > 0 else { continue }
+                    let symbol = row.ticker.uppercased()
+                    let day = Calendar.current.startOfDay(for: row.date)
+                    let historicalRate: Decimal?
+                    switch row.ccy.uppercased() {
+                    case "EUR": historicalRate = actualEURHUF[day] ?? rate(eurHUF, row.date)
+                    case "USD": historicalRate = rate(usdHUF, row.date)
+                    default:    historicalRate = nil
+                    }
+
+                    guard let historicalRate, historicalRate > 0 else {
+                        warnings.append("\(symbol): nincs használható \(row.ccy)\u{2192}HUF árfolyam, a crypto-sor kimaradt.")
+                        continue
+                    }
+
+                    var p = crypto[symbol] ?? (0, 0, 0, symbol, row.ccy, nil)
+                    if row.type == "Buy" {
+                        p.qty += row.quantity
+                        p.costEUR += row.ccy.uppercased() == "EUR" ? row.gross : 0
+                        p.costHUF += row.gross * historicalRate
+                        p.asOf = max(p.asOf ?? row.date, row.date)
+                    } else {
+                        guard p.qty > 0 else {
+                            warnings.append("\(symbol): eladás előzmény nélküli, ezért nem vontuk le a mennyiségből.")
+                            continue
+                        }
+                        let sold = min(row.quantity, p.qty)
+                        let share = sold / p.qty
+                        p.costEUR -= p.costEUR * share
+                        p.costHUF -= p.costHUF * share
+                        p.qty -= sold
+                        p.asOf = max(p.asOf ?? row.date, row.date)
+                        if sold < row.quantity {
+                            warnings.append("\(symbol): az eladás nagyobb volt a követett mennyiségnél; csak a meglévő darabszámot vontuk le.")
+                        }
+                    }
+                    crypto[symbol] = p
+                    continue
+                }
                 guard !row.isin.isEmpty, row.quantity > 0 else { continue }
                 var p = positions[row.isin] ?? (0, 0, 0, row.ticker, row.ccy)
                 // A forintos bekerülési érték csak euróban jegyzett papírnál értelmes;
@@ -260,6 +309,30 @@ struct StatementImporter {
         }
         holdings.sort { $0.ticker < $1.ticker }
 
+        let cryptoPositions = crypto.compactMap { symbol, p -> CryptoPosition? in
+            guard p.qty > Decimal(string: "0.000000001")!, p.costHUF > 0 else { return nil }
+            let name = Self.cryptoName(for: symbol)
+            // The transaction export contains acquisition data, not a current
+            // market snapshot. Keeping the cost as the displayed value avoids
+            // inventing a quote; the warning below makes this limitation clear.
+            return CryptoPosition(
+                id: "\(account):crypto:\(symbol)",
+                platform: account,
+                symbol: symbol,
+                name: name,
+                quantity: p.qty,
+                currentValueHUF: p.costHUF,
+                investedValueHUF: p.costHUF,
+                unitPriceHUF: p.qty > 0 ? p.costHUF / p.qty : nil,
+                asOf: p.asOf,
+                source: "Lightyear crypto · bekerülési érték"
+            )
+        }.sorted { $0.symbol < $1.symbol }
+
+        if !cryptoPositions.isEmpty {
+            warnings.append("Lightyear crypto: \(cryptoPositions.count) pozíció került be bekerülési értéken; ez az export nem tartalmaz aktuális piaci értéket.")
+        }
+
         if eurHUF.isEmpty {
             warnings.append("Nem sikerült devizatörténetet letölteni — a forintos bekerülési érték hiányzik.")
         }
@@ -267,7 +340,8 @@ struct StatementImporter {
             warnings.append("\(dailyValues.count) ügyleti napból visszaszámolt görbe — a Lightyear-kivonat nem tartalmaz napi egyenleget, ezért csak ennyi pont van.")
         }
 
-        return Result(holdings: holdings, deposits: deposits, fees: fees,
+        return Result(holdings: holdings, cryptoPositions: cryptoPositions,
+                      deposits: deposits, fees: fees,
                       cash: cash.filter { abs($0.value) > Decimal(string: "0.005")! },
                       conversionSpread: spreadBase > 0 ? spreadFee / spreadBase : nil,
                       dailyValues: dailyValues,
@@ -375,5 +449,52 @@ struct StatementImporter {
                 .replacingOccurrences(of: ".", with: "")
         }
         return Decimal(string: normalized, locale: Locale(identifier: "en_US_POSIX")) ?? 0
+    }
+
+    /// Tickers currently used by Lightyear's crypto trading export. An empty
+    /// ISIN alone is not enough to classify a row: conversions and cash rows
+    /// also have no ISIN, so keep the allow-list explicit.
+    private static func isCryptoTicker(_ raw: String) -> Bool {
+        let symbol = raw.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        return [
+            "BTC", "ETH", "SOL", "UNI", "XRP", "ADA", "DOT", "AVAX", "LINK",
+            "LTC", "BCH", "DOGE", "SHIB", "MATIC", "POL", "ATOM", "AAVE",
+            "ALGO", "XLM", "NEAR", "FIL", "TRX", "SAND", "MANA", "USDT",
+            "USDC", "DAI", "OP", "ARB"
+        ].contains(symbol)
+    }
+
+    private static func cryptoName(for symbol: String) -> String {
+        switch symbol.uppercased() {
+        case "BTC": return "Bitcoin"
+        case "ETH": return "Ethereum"
+        case "SOL": return "Solana"
+        case "UNI": return "Uniswap"
+        case "XRP": return "XRP"
+        case "ADA": return "Cardano"
+        case "DOT": return "Polkadot"
+        case "AVAX": return "Avalanche"
+        case "LINK": return "Chainlink"
+        case "LTC": return "Litecoin"
+        case "BCH": return "Bitcoin Cash"
+        case "DOGE": return "Dogecoin"
+        case "SHIB": return "Shiba Inu"
+        case "MATIC", "POL": return "Polygon"
+        case "ATOM": return "Cosmos"
+        case "AAVE": return "Aave"
+        case "ALGO": return "Algorand"
+        case "XLM": return "Stellar"
+        case "NEAR": return "NEAR Protocol"
+        case "FIL": return "Filecoin"
+        case "TRX": return "TRON"
+        case "SAND": return "The Sandbox"
+        case "MANA": return "Decentraland"
+        case "USDT": return "Tether"
+        case "USDC": return "USD Coin"
+        case "DAI": return "Dai"
+        case "OP": return "Optimism"
+        case "ARB": return "Arbitrum"
+        default: return symbol
+        }
     }
 }

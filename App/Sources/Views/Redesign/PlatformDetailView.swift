@@ -352,7 +352,8 @@ struct PlatformDetailView: View {
             }
             ForEach(crypto) { position in
                 let quantityText = position.quantity.map { "\(Fmt.decimal($0, max: 8)) db" }
-                let meta = [quantityText, position.asOf.map { "export: \(Fmt.day($0))" }]
+                let meta = [quantityText, position.asOf.map { "export: \(Fmt.day($0))" },
+                            Optional(position.source)]
                     .compactMap { $0 }
                     .joined(separator: " · ")
                 assetRow(

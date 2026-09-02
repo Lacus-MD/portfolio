@@ -94,6 +94,16 @@ extension PortfolioStore {
 
             if summary.platform.kind == .crypto {
                 let positions = cryptoPositions.filter { $0.platform == id }
+                if positions.contains(where: { $0.source.localizedCaseInsensitiveContains("bekerülési") }) {
+                    let issue = ReconciliationIssue(
+                        id: "platform.crypto-cost-basis-only.\(id)",
+                        severity: .notice,
+                        title: "Lightyear crypto: nincs aktuális árjegyzés",
+                        detail: "A tranzakciós export nem tartalmaz jelenlegi piaci értéket, ezért a pozíciók a bekerülési értéken látszanak. Új, értéket tartalmazó exporttal vagy későbbi árforrással frissíthető.")
+                    issues.append(issue)
+                    rowSeverity = max(rowSeverity, issue.severity)
+                    details.append("crypto csak bekerülési értéken")
+                }
                 if positions.contains(where: { $0.asOf == nil }) {
                     let issue = ReconciliationIssue(
                         id: "platform.crypto-no-date.\(id)",

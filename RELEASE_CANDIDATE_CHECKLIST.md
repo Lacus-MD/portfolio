@@ -1,12 +1,12 @@
-# Portfolio 1.0 Release Candidate checklist — Build 35
+# Portfolio 1.0 Release Candidate checklist — Build 36
 
-This checklist is the no-device verification path for Build 35. It is safe to
+This checklist is the no-device verification path for Build 36. It is safe to
 run without bank credentials, signing secrets, or a connected phone.
 
 - [x] XcodeGen regenerated `Portfolio.xcodeproj` from `project.yml`.
 - [x] Unit-test target compiles for iPhoneOS without signing.
 - [x] All app, widget, share-extension, watch app, and watch widget targets
-  compile in the Build 35 Release configuration. The build reports only the
+  compile in the Build 36 Release configuration. The build reports only the
   pre-existing DateFormatter and watch-target warnings.
 - [x] Build number is read from the generated app bundle Info.plist.
 - [x] iCloud sync envelope round-trip and revision conflict tests compile in
@@ -22,6 +22,9 @@ run without bank credentials, signing secrets, or a connected phone.
 - [x] Az állampapír-lejáratok megjelennek a kamat- és lejárati naptárban.
 - [x] Crypto/wallet export HUF mérési értékkel, opcionális bekerüléssel és
   duplázás elleni platform-egyeztetéssel kerül be; nincs tranzakciós útvonal.
+- [x] Lightyear főszámla-exportból az ISIN nélküli crypto Buy/Sell sorok (ETH,
+  SOL, UNI és ismert tokenek) nettó mennyiséggel, történeti bekerülési értékkel
+  és látható aktuális-ár hiány jelzéssel kerülnek be.
 - [x] Enable Banking provider-állapot látható; élő API-hívás csak ellenőrzött,
   aktív konfigurációval indul, a privát kulcs készülék-helyi Keychainben marad.
 - [x] `git diff --check` passes.
@@ -35,9 +38,10 @@ run without bank credentials, signing secrets, or a connected phone.
 - [ ] Five-to-seven-day TestFlight observation — deferred until a device and
   App Store Connect upload are available.
 
-Build 35 implementation is complete for the import-reconciliation,
+Build 36 implementation is complete for the import-reconciliation,
 WebKincstár-detail, crypto-export, provider-gating and portfolio-value
-reconciliation slices, plus the scheduled market-close notification. Release and
+reconciliation slices, plus Lightyear crypto transaction recognition and the
+scheduled market-close notification. Release and
 runtime verification remain deferred because the host cannot start the
 CoreSimulator service and the physical iPhone is unavailable; the existing
 cloud-sync implementation was not changed.

@@ -204,6 +204,9 @@ struct ReconciliationView: View {
                 }
             }
             .foregroundStyle(DS.Color.inkSoft(0.52))
+            Text(position.source)
+                .font(DS.font(10.5, .regular))
+                .foregroundStyle(DS.Color.inkSoft(0.42))
         }
         .padding(.vertical, 2)
     }

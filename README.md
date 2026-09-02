@@ -230,7 +230,7 @@ az éles provider-alkalmazást, szerződést és saját kulcsot a felhasználó 
 Közös titok nincs az appban, a privát kulcs készülék-helyi Keychainben marad,
 és a kivonat-import provider nélkül is teljes értékű.
 
-### Build 35 — import-egyeztetés, WebKincstár-részletek, crypto export, banki provider-állapot, érték-egyeztetés és piaczárási értesítés
+### Build 36 — import-egyeztetés, WebKincstár-részletek, crypto export, banki provider-állapot, érték-egyeztetés és piaczárási értesítés
 
 A Beállítások → Fejlesztői eszközök → **Import- és értékellenőrzés** nézete
 megmutatja, ha hiányzik egy árfolyam, régi egyenlegből számolunk, szokatlan a
@@ -244,9 +244,11 @@ indít tranzakciót. Az iCloud szinkronizálás meglévő payload-rétege automa
 viszi az új mezőt Mac, iPad és iPhone között.
 
 Crypto/wallet CSV-kből ugyanígy csak az exportált, HUF-ban megadott mérési
-értéket és opcionális bekerülést tartjuk meg. A képernyőn ez külön „Kripto
-wallet” platformként jelenik meg; élő árfolyam, privát kulcs és kereskedési
-művelet nincs benne.
+értéket és opcionális bekerülést tartjuk meg. A Lightyear főszámla tranzakciós
+exportját is felismerjük: az ISIN nélküli ETH/SOL/UNI (és ismert token-) sorokat
+nettó mennyiséggel és történeti bekerülési értékkel külön crypto-pozícióként
+mentjük. Mivel ez a fájl nem tartalmaz aktuális kriptoárat, a felület ezt
+egyértelműen jelzi; élő árfolyam, privát kulcs és kereskedési művelet nincs benne.
 
 Az Enable Banking képernyőn külön látszik a hiányzó Application ID, callback,
 privát kulcs, provider-ellenőrzés, inaktív provider vagy lejárt hozzájárulás.

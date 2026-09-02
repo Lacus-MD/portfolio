@@ -57,6 +57,7 @@ sikeres, a telefonos telepítés sikerült, és a commit felkerült GitHubra.
 | 33 | Enable Banking provider-állapot és biztonságos élesítés | ellenőrzés alatt | munkafolyamatban |
 | 34 | Portfólióérték-egyeztetés: piaci és realizálható érték szétválasztása | ellenőrzés alatt | munkafolyamatban |
 | 35 | Hétköznapi piaczárási helyi értesítés | ellenőrzés alatt | munkafolyamatban |
+| 36 | Lightyear főszámla crypto-tranzakciós export felismerése | ellenőrzés alatt | munkafolyamatban |
 
 ### Következő fejlesztési sorrend (felhőszinkron kész)
 
@@ -78,13 +79,14 @@ Az iCloud szinkronizálás (Mac és iPad között is) már kész, ezért ezt nem
 5. **Release ellenőrzés** — unit/fordítás, Release build, eszközös smoke és
    csak ezután TestFlight-megfigyelés.
 
-A Build 35 az első négy pont implementációja mellett a portfólióérték
+A Build 36 az első négy pont implementációja mellett a portfólióérték
 egyeztetését is tartalmazza: a fő összeg a szolgáltatói aktuális piaci értéket
 követi, a történeti conversion spread pedig külön realizálható becslés marad.
 A hétköznapi piaczárási értesítés a Beállításokból kapcsolható be, Europe/Budapest
-időzónában 17:30-ra. A Build 35 Release ellenőrzése elkészült; a runtime
-ellenőrzés a host Xcode plug-in/CoreSimulator korlátozása miatt továbbra sem
-zárható le.
+időzónában 17:30-ra. A Lightyear főszámla ISIN nélküli crypto-tranzakciói külön
+pozícióként kerülnek be, bekerülési értékkel és látható korlátozási jelzéssel.
+A Build 36 Release ellenőrzése elkészült; a runtime-ellenőrzés a host Xcode
+plug-in/CoreSimulator korlátozása miatt továbbra sem zárható le.
 
 Engedélyezett állapotok:
 
