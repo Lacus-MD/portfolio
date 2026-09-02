@@ -76,6 +76,10 @@ struct PortfolioApp: App {
                 // előtérbe kerülés feldolgoz — a hívás olcsó, ha üres.
                 Task { [store, banking] in
                     await store.startup()
+                    // A crypto-jegyzések előtérben folyamatosan frissülnek;
+                    // háttérben az iOS felfüggeszti ezt a hurkot, ezért ott
+                    // csak a meglévő BGAppRefresh lehetőségre támaszkodunk.
+                    store.startCryptoAutoRefresh()
                     await Reminders.MarketClose.schedule()
                     // A banki folyószámlák frissítése. Saját várakozási
                     // ideje van (6 óra), tehát ez a hívás olcsó, ha nem kell.
@@ -93,6 +97,7 @@ struct PortfolioApp: App {
                     }
                 }
             case .background:
+                store.stopCryptoAutoRefresh()
                 // A 300 ms-os összevont mentés ablakában megszakított app
                 // elveszthetné az utolsó műveletsort — itt kiürítjük.
                 store.flushPendingSave()

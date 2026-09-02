@@ -2,9 +2,9 @@ import Foundation
 
 /// Egy kripto- vagy wallet-exportból felismert, csak olvasható pozíció.
 ///
-/// Az értéket a fájl tartalmazza HUF-ban az export időpontjában. Nem kérünk
-/// privát kulcsot, nem írunk láncra és nem indítunk vételt/eladást; amíg nincs
-/// megbízható árfolyamforrás, az importált érték marad a mérés.
+/// Az importált bekerülési és mennyiségi adat mellé opcionális, olvasott piaci
+/// jegyzés társul. Nem kérünk privát kulcsot, nem írunk láncra és nem indítunk
+/// vételt/eladást.
 struct CryptoPosition: Identifiable, Codable, Hashable {
     let id: String
     var platform: String
@@ -16,11 +16,25 @@ struct CryptoPosition: Identifiable, Codable, Hashable {
     var unitPriceHUF: Decimal?
     var asOf: Date?
     var source: String
+    /// Aktuális CoinGecko-jegyzésből számolt egységár. Az importált
+    /// `unitPriceHUF` a bekerülési egységár marad, hogy a hozam számítása ne
+    /// veszítse el a viszonyítási alapját.
+    var marketPriceHUF: Decimal?
+    /// CoinGecko 24 órás változása százalékban.
+    var marketChangePercent: Double?
+    /// A piaci jegyzés időpontja (Unix timestampből).
+    var marketAsOf: Date?
+    /// Az árfolyam forrása, jelenleg CoinGecko.
+    var marketSource: String?
 
     init(id: String, platform: String, symbol: String, name: String,
          quantity: Decimal? = nil, currentValueHUF: Decimal,
          investedValueHUF: Decimal? = nil, unitPriceHUF: Decimal? = nil,
-         asOf: Date? = nil, source: String) {
+         asOf: Date? = nil, source: String,
+         marketPriceHUF: Decimal? = nil,
+         marketChangePercent: Double? = nil,
+         marketAsOf: Date? = nil,
+         marketSource: String? = nil) {
         self.id = id
         self.platform = platform
         self.symbol = symbol
@@ -31,6 +45,10 @@ struct CryptoPosition: Identifiable, Codable, Hashable {
         self.unitPriceHUF = unitPriceHUF
         self.asOf = asOf
         self.source = source
+        self.marketPriceHUF = marketPriceHUF
+        self.marketChangePercent = marketChangePercent
+        self.marketAsOf = marketAsOf
+        self.marketSource = marketSource
     }
 
     init(from decoder: Decoder) throws {
@@ -45,5 +63,9 @@ struct CryptoPosition: Identifiable, Codable, Hashable {
         unitPriceHUF = try c.decodeIfPresent(Decimal.self, forKey: .unitPriceHUF)
         asOf = try c.decodeIfPresent(Date.self, forKey: .asOf)
         source = try c.decodeIfPresent(String.self, forKey: .source) ?? "Kripto-export"
+        marketPriceHUF = try c.decodeIfPresent(Decimal.self, forKey: .marketPriceHUF)
+        marketChangePercent = try c.decodeIfPresent(Double.self, forKey: .marketChangePercent)
+        marketAsOf = try c.decodeIfPresent(Date.self, forKey: .marketAsOf)
+        marketSource = try c.decodeIfPresent(String.self, forKey: .marketSource)
     }
 }

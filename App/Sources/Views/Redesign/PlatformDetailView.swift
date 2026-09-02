@@ -352,16 +352,23 @@ struct PlatformDetailView: View {
             }
             ForEach(crypto) { position in
                 let quantityText = position.quantity.map { "\(Fmt.decimal($0, max: 8)) db" }
-                let meta = [quantityText, position.asOf.map { "export: \(Fmt.day($0))" },
-                            Optional(position.source)]
-                    .compactMap { $0 }
-                    .joined(separator: " · ")
+                var metaParts = [String]()
+                if let quantityText { metaParts.append(quantityText) }
+                if let asOf = position.asOf { metaParts.append("export: \(Fmt.day(asOf))") }
+                if let marketPrice = position.marketPriceHUF {
+                    let quoteTime = position.marketAsOf.map { " · \(Fmt.time($0))" } ?? ""
+                    metaParts.append("CoinGecko · \(Fmt.huf(marketPrice))/db\(quoteTime)")
+                }
+                if let totalGain = cryptoTotalDelta(for: position) {
+                    metaParts.append("összesen \(Fmt.percent(totalGain))")
+                }
+                if metaParts.isEmpty { metaParts.append("Csak olvasható export") }
                 assetRow(
                     monogram: String(position.symbol.prefix(2)),
                     name: position.name,
-                    meta: meta.isEmpty ? "Csak olvasható export" : meta,
+                    meta: metaParts.joined(separator: " · "),
                     value: position.currentValueHUF,
-                    delta: cryptoDelta(for: position)
+                    delta: position.marketChangePercent ?? cryptoTotalDelta(for: position)
                 )
             }
 
@@ -419,7 +426,7 @@ struct PlatformDetailView: View {
         return ((value - holding.costBasis) / holding.costBasis).doubleValue * 100
     }
 
-    private func cryptoDelta(for position: CryptoPosition) -> Double? {
+    private func cryptoTotalDelta(for position: CryptoPosition) -> Double? {
         guard let invested = position.investedValueHUF, invested > 0 else { return nil }
         return ((position.currentValueHUF - invested) / invested).doubleValue * 100
     }

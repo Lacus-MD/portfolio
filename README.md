@@ -230,6 +230,23 @@ az éles provider-alkalmazást, szerződést és saját kulcsot a felhasználó 
 Közös titok nincs az appban, a privát kulcs készülék-helyi Keychainben marad,
 és a kivonat-import provider nélkül is teljes értékű.
 
+### Build 37 — CoinGecko crypto árfolyamkövetés
+
+A Lightyear főszámla exportja továbbra is a crypto darabszámának és történeti
+bekerülési értékének forrása. A hiányzó aktuális értéket a CoinGecko Simple
+Price API tölti ki HUF-ban: az app egyetlen kérésben frissíti az ismert tokeneket,
+elmenti az egységárat, a 24 órás változást és a jegyzés időpontját. Az előtérben
+45 másodpercenként frissülő élő érték nem írja felül a bekerülési adatot, így a
+crypto hozama és az aktuális napi mozgás külön látszik.
+
+A crypto-sorok és a platformkártya jelzik a CoinGecko árat, a 24 órás mozgást és
+az utolsó jegyzés idejét. A jelentős, legalább ±3%-os crypto-mozgás ugyanabba a
+napi egyszeri értesítési csatornába kerül, mint az értékpapírok. Ha a hálózat
+nem érhető el, az utolsó ismert értéket tartjuk meg, és a reconciliation nézet
+nem rejti el, hogy az adat milyen időpontból származik. A Lightyear egyenlege és
+tranzakciói továbbra is új exportból frissülnek; az árfolyamkövetés önmagában
+nem kér számlahozzáférést és nem indít kereskedést.
+
 ### Build 36 — import-egyeztetés, WebKincstár-részletek, crypto export, banki provider-állapot, érték-egyeztetés és piaczárási értesítés
 
 A Beállítások → Fejlesztői eszközök → **Import- és értékellenőrzés** nézete
@@ -247,8 +264,10 @@ Crypto/wallet CSV-kből ugyanígy csak az exportált, HUF-ban megadott mérési
 értéket és opcionális bekerülést tartjuk meg. A Lightyear főszámla tranzakciós
 exportját is felismerjük: az ISIN nélküli ETH/SOL/UNI (és ismert token-) sorokat
 nettó mennyiséggel és történeti bekerülési értékkel külön crypto-pozícióként
-mentjük. Mivel ez a fájl nem tartalmaz aktuális kriptoárat, a felület ezt
-egyértelműen jelzi; élő árfolyam, privát kulcs és kereskedési művelet nincs benne.
+mentjük. Mivel ez a fájl nem tartalmaz aktuális kriptoárat, a Build 36 még
+bekerülési értéken mutatta; ezt a Build 37 CoinGecko-rétege egészíti ki. A
+felület ezt egyértelműen jelzi; privát kulcs és kereskedési művelet továbbra
+sincs benne.
 
 Az Enable Banking képernyőn külön látszik a hiányzó Application ID, callback,
 privát kulcs, provider-ellenőrzés, inaktív provider vagy lejárt hozzájárulás.

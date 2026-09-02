@@ -140,3 +140,124 @@ actor QuoteService {
         }
     }
 }
+
+/// Egy kriptoeszköz CoinGecko-jegyzése forintban.
+///
+/// A Lightyear tranzakciós export a darabszámot és a bekerülési összeget
+/// tartalmazza, aktuális piaci árat nem. Ez a külön modell azért kell, hogy a
+/// piaci értéket frissíthessük anélkül, hogy a bekerülési adatot felülírnánk.
+struct CryptoQuote: Sendable, Hashable {
+    let symbol: String
+    let coinID: String
+    let priceHUF: Decimal
+    let changePercent24h: Double?
+    let timestamp: Date
+    let source: String
+}
+
+enum CryptoQuoteError: LocalizedError {
+    case noSymbols
+    case unavailable
+    case noData(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .noSymbols: "Nincs frissíthető kriptoeszköz."
+        case .unavailable: "A CoinGecko árfolyamszolgáltatása nem érhető el."
+        case .noData(let symbols): "Nem érkezett árfolyam erre: \(symbols)"
+        }
+    }
+}
+
+/// CoinGecko Simple Price kliens.
+///
+/// A REST végpont több eszközt egyetlen kérésben ad vissza, ezért egy
+/// frissítési kör nem indít külön hálózati kérést minden tokenhez. Az app csak
+/// olvas: nincs kereskedési vagy számla-hozzáférés, API-kulcsot sem tárolunk a
+/// kliensben.
+actor CryptoQuoteService {
+    private let session: URLSession = {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = 15
+        configuration.waitsForConnectivity = true
+        return URLSession(configuration: configuration)
+    }()
+
+    private static let endpoint = "https://api.coingecko.com/api/v3/simple/price"
+
+    /// A Lightyear és a gyakori wallet-exportok szimbólumaihoz tartozó
+    /// CoinGecko azonosítók. A szimbólum alapján nem kérünk találgató keresést:
+    /// így pl. a több, azonos tickerű token nem keverhető össze.
+    static let coinIDs: [String: String] = [
+        "BTC": "bitcoin", "ETH": "ethereum", "SOL": "solana", "UNI": "uniswap",
+        "XRP": "ripple", "ADA": "cardano", "DOT": "polkadot", "AVAX": "avalanche-2",
+        "LINK": "chainlink", "LTC": "litecoin", "BCH": "bitcoin-cash", "DOGE": "dogecoin",
+        "SHIB": "shiba-inu", "MATIC": "matic-network", "POL": "polygon-ecosystem-token",
+        "ATOM": "cosmos", "AAVE": "aave", "ALGO": "algorand", "XLM": "stellar",
+        "NEAR": "near", "FIL": "filecoin", "TRX": "tron", "SAND": "the-sandbox",
+        "MANA": "decentraland", "USDT": "tether", "USDC": "usd-coin", "DAI": "dai",
+        "OP": "optimism", "ARB": "arbitrum"
+    ]
+
+    private struct Price: Decodable {
+        let huf: Decimal?
+        let huf24hChange: Double?
+        let lastUpdatedAt: Int?
+
+        enum CodingKeys: String, CodingKey {
+            case huf
+            case huf24hChange = "huf_24h_change"
+            case lastUpdatedAt = "last_updated_at"
+        }
+    }
+
+    /// Lekéri az összes ismert szimbólum árát egyetlen CoinGecko-kérésben.
+    /// Ismeretlen vagy átmenetileg kimaradó tokenekhez nem gyártunk nullás
+    /// árat: a hívó ilyenkor megtartja az utolsó ismert értéket.
+    func quotes(for symbols: [String]) async throws -> [String: CryptoQuote] {
+        let normalized = Array(Set(symbols.map { $0.uppercased() })).sorted()
+        let requests = normalized.compactMap { symbol -> (String, String)? in
+            guard let id = Self.coinIDs[symbol] else { return nil }
+            return (symbol, id)
+        }
+        guard !requests.isEmpty else {
+            if normalized.isEmpty { throw CryptoQuoteError.noSymbols }
+            throw CryptoQuoteError.noData(normalized.joined(separator: ", "))
+        }
+
+        var components = URLComponents(string: Self.endpoint)!
+        components.queryItems = [
+            URLQueryItem(name: "ids", value: requests.map { $0.1 }.joined(separator: ",")),
+            URLQueryItem(name: "vs_currencies", value: "huf"),
+            URLQueryItem(name: "include_24hr_change", value: "true"),
+            URLQueryItem(name: "include_last_updated_at", value: "true")
+        ]
+        var request = URLRequest(url: components.url!)
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("Portfolio/1.0 (read-only crypto quotes)", forHTTPHeaderField: "User-Agent")
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse,
+              (200..<300).contains(http.statusCode) else {
+            throw CryptoQuoteError.unavailable
+        }
+        let decoded = try JSONDecoder().decode([String: Price].self, from: data)
+        // A legacy ticker and its successor can occasionally share an API id.
+        // Keep the first deterministic mapping instead of trapping on duplicate
+        // dictionary keys; unsupported aliases simply keep their last value.
+        let idToSymbol = requests.reduce(into: [String: String]()) { result, request in
+            if result[request.1] == nil { result[request.1] = request.0 }
+        }
+        let result = decoded.compactMap { id, value -> (String, CryptoQuote)? in
+            guard let symbol = idToSymbol[id], let huf = value.huf, huf > 0 else { return nil }
+            let timestamp = value.lastUpdatedAt.map { Date(timeIntervalSince1970: TimeInterval($0)) } ?? Date()
+            return (symbol, CryptoQuote(symbol: symbol, coinID: id, priceHUF: huf,
+                                        changePercent24h: value.huf24hChange,
+                                        timestamp: timestamp, source: "CoinGecko"))
+        }
+        guard !result.isEmpty else {
+            throw CryptoQuoteError.noData(requests.map { $0.0 }.joined(separator: ", "))
+        }
+        return Dictionary(uniqueKeysWithValues: result)
+    }
+}

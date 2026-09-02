@@ -58,6 +58,7 @@ sikeres, a telefonos telepítés sikerült, és a commit felkerült GitHubra.
 | 34 | Portfólióérték-egyeztetés: piaci és realizálható érték szétválasztása | ellenőrzés alatt | munkafolyamatban |
 | 35 | Hétköznapi piaczárási helyi értesítés | ellenőrzés alatt | munkafolyamatban |
 | 36 | Lightyear főszámla crypto-tranzakciós export felismerése | ellenőrzés alatt | munkafolyamatban |
+| 37 | CoinGecko crypto árfolyamkövetés és előtérbeli frissítés | ellenőrzés alatt | munkafolyamatban |
 
 ### Következő fejlesztési sorrend (felhőszinkron kész)
 
@@ -85,6 +86,13 @@ követi, a történeti conversion spread pedig külön realizálható becslés m
 A hétköznapi piaczárási értesítés a Beállításokból kapcsolható be, Europe/Budapest
 időzónában 17:30-ra. A Lightyear főszámla ISIN nélküli crypto-tranzakciói külön
 pozícióként kerülnek be, bekerülési értékkel és látható korlátozási jelzéssel.
+A Build 37-ben a Lightyear crypto mennyiségekhez CoinGecko HUF árfolyamréteg
+került: az előtérben futó frissítés 45 másodpercenként kérdezi le az ismert
+tokeneket, külön tárolja az aktuális egységárat, a 24 órás változást és a
+jegyzés időpontját, és jelentős mozgásnál a meglévő napi értesítési csatornát
+használja. A CoinGecko-hiba nem nullázza a crypto értéket: az utolsó ismert
+adat marad látható, a reconciliation pedig jelzi, ha nincs még árjegyzés.
+
 A Build 36 Release ellenőrzése elkészült; a runtime-ellenőrzés a host Xcode
 plug-in/CoreSimulator korlátozása miatt továbbra sem zárható le.
 

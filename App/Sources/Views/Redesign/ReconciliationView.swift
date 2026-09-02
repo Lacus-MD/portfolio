@@ -49,7 +49,7 @@ struct ReconciliationView: View {
                         cryptoRow(position)
                     }
                 } header: {
-                    Text("Kripto-pozíciók · csak olvasható export")
+                    Text("Kripto-pozíciók · export + CoinGecko")
                 }
             }
 
@@ -201,6 +201,12 @@ struct ReconciliationView: View {
                 }
                 if let asOf = position.asOf {
                     Text("export: \(Fmt.day(asOf))").font(DS.meta)
+                }
+                if let marketPrice = position.marketPriceHUF {
+                    Text("CoinGecko \(Fmt.huf(marketPrice))/db").font(DS.meta)
+                }
+                if let change = position.marketChangePercent {
+                    Text("24 óra \(Fmt.percent(change))").font(DS.meta)
                 }
             }
             .foregroundStyle(DS.Color.inkSoft(0.52))

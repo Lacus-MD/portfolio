@@ -166,6 +166,7 @@ final class PortfolioStore {
     }
 
     private let quoteService = QuoteService()
+    private let cryptoQuoteService = CryptoQuoteService()
     private let fxService = FXService()
 
     /// Igaz, ha a lemezről már betöltöttünk. A `save()` enélkül nem ír —
@@ -250,6 +251,16 @@ final class PortfolioStore {
     /// Egy számla árrése. Ismeretlen számlánál nulla — inkább ne vonjunk le
     /// semmit, mint hogy egy másik bróker árrését alkalmazzuk rá.
     func spread(for account: String) -> Decimal { conversionSpread[account] ?? 0 }
+
+    /// Az adott crypto-platform legutóbbi CoinGecko-jegyzése. A kártya ezzel
+    /// tudja megkülönböztetni az élő értékelést a csak exportból származó
+    /// bekerülési értéktől.
+    func cryptoQuoteDate(ofPlatform id: String) -> Date? {
+        cryptoPositions
+            .filter { $0.platform == id }
+            .compactMap(\.marketAsOf)
+            .max()
+    }
 
     /// A szolgáltatói számla aktuális, középárfolyamos értéke.
     ///
@@ -353,6 +364,39 @@ final class PortfolioStore {
     /// tudjuk, hogy a végén még a SAJÁT feladatunkat takarítjuk-e el.
     private var refreshGeneration = UUID()
 
+    /// Előtérben futó, könnyű crypto-árfolyamfrissítés. A hagyományos
+    /// `refresh()` a teljes portfóliót frissíti; ez a hurok csak a CoinGecko
+    /// jegyzéseit kéri le, így a kripto 45 másodpercen belül követi a piacot.
+    @ObservationIgnored private var cryptoRefreshTask: Task<Void, Never>?
+    /// A gyakori árfrissítések nem írják újra az iCloud-revíziót minden 45
+    /// másodpercben. A képernyő azonnal frissül, a legutóbbi jegyzés pedig
+    /// legfeljebb öt percenként kerül tartós/iCloud tárolásba.
+    @ObservationIgnored private var lastCryptoQuoteSave: Date?
+
+    /// CoinGecko árfolyamok automatikus követése, amíg az app előtérben van.
+    /// iOS háttérben nem garantál folyamatos futást, ezért a scene életciklusa
+    /// indítja és állítja le ezt a feladatot.
+    func startCryptoAutoRefresh() {
+        guard cryptoRefreshTask == nil else { return }
+        cryptoRefreshTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self else { return }
+                await self.refreshCryptoQuotes()
+                guard !Task.isCancelled else { return }
+                do {
+                    try await Task.sleep(for: .seconds(45))
+                } catch {
+                    return
+                }
+            }
+        }
+    }
+
+    func stopCryptoAutoRefresh() {
+        cryptoRefreshTask?.cancel()
+        cryptoRefreshTask = nil
+    }
+
     /// Frissítés összevonással.
     ///
     /// Korábban egy `guard !isRefreshing else { return }` állt itt, ami NÉMÁN
@@ -391,6 +435,10 @@ final class PortfolioStore {
         // egymás után újraértékelődött. Most minden kérés párhuzamosan fut,
         // az eredményt pedig egyetlen állapotfrissítéssel adjuk át a UI-nak.
         async let latestFX: FXService.Snapshot? = try? await fxService.current()
+        let cryptoSymbols = Array(Set(cryptoPositions.map(\.symbol))).sorted()
+        async let latestCrypto: [String: CryptoQuote]? = cryptoSymbols.isEmpty
+            ? nil
+            : (try? await cryptoQuoteService.quotes(for: cryptoSymbols))
 
         let requests = holdings.map { (isin: $0.isin, ticker: $0.ticker) }
         let service = quoteService
@@ -431,6 +479,14 @@ final class PortfolioStore {
         }
         quotes = refreshedQuotes
 
+        if let latestCrypto = await latestCrypto {
+            let cryptoMoves = applyCryptoQuotes(latestCrypto)
+            lastCryptoQuoteSave = Date()
+            await ActivityNotifications.Market.notify(cryptoMoves)
+        } else if !cryptoSymbols.isEmpty {
+            failures.append("crypto árfolyam")
+        }
+
         // Csak a most ténylegesen lekért árakból értesítünk — egy hálózati
         // hibánál a gyorsítótár régi ±3%-a nem új esemény. Az azonos ISIN több
         // számlán is állhat; az értesítés ettől még egyszer jelenjen meg.
@@ -456,12 +512,61 @@ final class PortfolioStore {
         saveSoon()
     }
 
+    /// CoinGecko-jegyzések alkalmazása a pozíciókra. A bekerülési érték és az
+    /// export dátuma érintetlen marad; csak az aktuális piaci mezők és a
+    /// megjelenített HUF-érték változik.
+    @discardableResult
+    private func applyCryptoQuotes(_ fetched: [String: CryptoQuote])
+        -> [ActivityNotifications.Market.Move] {
+        guard !fetched.isEmpty else { return [] }
+        var updated = cryptoPositions
+        var moves: [ActivityNotifications.Market.Move] = []
+
+        for index in updated.indices {
+            let symbol = updated[index].symbol.uppercased()
+            guard let quote = fetched[symbol], let quantity = updated[index].quantity,
+                  quantity >= 0 else { continue }
+            updated[index].marketPriceHUF = quote.priceHUF
+            updated[index].marketChangePercent = quote.changePercent24h
+            updated[index].marketAsOf = quote.timestamp
+            updated[index].marketSource = quote.source
+            updated[index].currentValueHUF = quantity * quote.priceHUF
+
+            if let change = quote.changePercent24h {
+                moves.append(.init(id: "crypto:\(updated[index].platform):\(symbol)",
+                                   name: updated[index].name, symbol: symbol,
+                                   changePct: change, price: quote.priceHUF,
+                                   currency: "HUF"))
+            }
+        }
+        cryptoPositions = updated
+        return moves
+    }
+
+    /// A rövid, előtérbeli ciklus által hívott crypto-only frissítés. Ha nincs
+    /// crypto pozíció, nincs hálózati kérés és nincs állapotmódosítás.
+    func refreshCryptoQuotes() async {
+        let symbols = Array(Set(cryptoPositions.map(\.symbol))).sorted()
+        guard !symbols.isEmpty else { return }
+        guard let fetched = try? await cryptoQuoteService.quotes(for: symbols),
+              !fetched.isEmpty else { return }
+        let moves = applyCryptoQuotes(fetched)
+        await ActivityNotifications.Market.notify(moves)
+        let now = Date()
+        if lastCryptoQuoteSave.map({ now.timeIntervalSince($0) >= 5 * 60 }) ?? true {
+            lastCryptoQuoteSave = now
+            saveSoon()
+        }
+    }
+
     /// Napi pillanatkép — naponta egy, felülírva, ha ma már volt.
     /// Csak akkor mentünk, ha MINDEN pozícióra van élő ár; a hiányos mérés
     /// hamis zuhanást rajzolna a görbére.
     private func recordSnapshotIfPossible() {
-        guard !holdings.isEmpty, fxRate > 0 else { return }
-        guard holdings.allSatisfy({ quotes[$0.isin] != nil }) else { return }
+        guard !holdings.isEmpty || !cryptoPositions.isEmpty else { return }
+        if !holdings.isEmpty {
+            guard fxRate > 0, holdings.allSatisfy({ quotes[$0.isin] != nil }) else { return }
+        }
 
         let today = Calendar.current.startOfDay(for: Date())
         var perPlatform: [String: Decimal] = [:]
@@ -921,7 +1026,10 @@ final class PortfolioStore {
                 gainPct: item.gainPct
             )
         }
-        summary.spark = snapshots.suffix(30).map { ($0.valueEUR * $0.fxRate).doubleValue }
+        summary.spark = snapshots.suffix(30).map { snapshot in
+            let byPlatform = snapshot.byPlatform.values.reduce(Decimal(0), +)
+            return (byPlatform > 0 ? byPlatform : snapshot.valueEUR * snapshot.fxRate).doubleValue
+        }
         // Az órára csak az az időszak megy fel, aminek a százaléka jelent
         // valamit. A telefonon a „nincs értelmes alap" esetet ki tudjuk írni,
         // egy 25 mm-es kijelzőn nem — ott a félreérthető szám rosszabb, mint

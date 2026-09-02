@@ -135,4 +135,36 @@ final class ImporterFixtureTests: XCTestCase {
         XCTAssertEqual(importedTotal, Decimal(1_140_000))
         XCTAssertTrue(result.warnings.first?.contains("Csak olvasható") == true)
     }
+
+    func testCryptoPositionMarketQuoteFieldsRoundTripAndLegacyPayloadDecodes() throws {
+        let quoteDate = Date(timeIntervalSince1970: 1_756_600_000)
+        let position = CryptoPosition(
+            id: "lightyear:crypto:ETH",
+            platform: "lightyear",
+            symbol: "ETH",
+            name: "Ethereum",
+            quantity: Decimal(string: "0.4"),
+            currentValueHUF: 1_100_000,
+            investedValueHUF: 1_000_000,
+            unitPriceHUF: 2_500_000,
+            asOf: quoteDate,
+            source: "Lightyear crypto",
+            marketPriceHUF: 2_750_000,
+            marketChangePercent: 3.25,
+            marketAsOf: quoteDate,
+            marketSource: "CoinGecko"
+        )
+
+        let data = try JSONEncoder().encode(position)
+        let decoded = try JSONDecoder().decode(CryptoPosition.self, from: data)
+        XCTAssertEqual(decoded.marketPriceHUF, Decimal(2_750_000))
+        XCTAssertEqual(decoded.marketChangePercent, 3.25)
+        XCTAssertEqual(decoded.marketAsOf, quoteDate)
+        XCTAssertEqual(decoded.marketSource, "CoinGecko")
+
+        let legacy = Data("{\"id\":\"legacy\",\"platform\":\"lightyear\",\"symbol\":\"ETH\",\"name\":\"Ethereum\",\"currentValueHUF\":1000,\"source\":\"Kripto-export\"}".utf8)
+        let legacyDecoded = try JSONDecoder().decode(CryptoPosition.self, from: legacy)
+        XCTAssertNil(legacyDecoded.marketPriceHUF)
+        XCTAssertNil(legacyDecoded.marketAsOf)
+    }
 }

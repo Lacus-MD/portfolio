@@ -4,6 +4,7 @@ import SwiftUI
 /// 26-os oszlopköz) az eredeti tervből jön; a felület pasztell alapszínt és
 /// lokalizált jobb felső sarokátmenetet kap.
 struct PlatformCard: View {
+    @Environment(PortfolioStore.self) private var store
     let summary: PlatformSummary
     var animateRing: Bool = true
     var isFeatured: Bool = false
@@ -157,6 +158,12 @@ struct PlatformCard: View {
                 .frame(width: 5, height: 5)
                 .padding(10)
                 .background(palette.badgeFill, in: .rect(cornerRadius: 11))
+        } else if let quotedAt = store.cryptoQuoteDate(ofPlatform: summary.platform.id) {
+            let isFresh = Date().timeIntervalSince(quotedAt) < 5 * 60
+            badge {
+                Circle().fill(isFresh ? palette.accent : palette.ink.opacity(0.45)).frame(width: 5, height: 5)
+                Text("\(isFresh ? "Élő" : "Régi") · \(Fmt.time(quotedAt))")
+            }
         } else if summary.platform.kind == .crypto {
             badge { Text("Export") }
         }

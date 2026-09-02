@@ -92,14 +92,14 @@ extension PortfolioStore {
                 }
             }
 
-            if summary.platform.kind == .crypto {
-                let positions = cryptoPositions.filter { $0.platform == id }
-                if positions.contains(where: { $0.source.localizedCaseInsensitiveContains("bekerülési") }) {
+            let positions = cryptoPositions.filter { $0.platform == id }
+            if !positions.isEmpty {
+                if positions.contains(where: { $0.marketPriceHUF == nil }) {
                     let issue = ReconciliationIssue(
                         id: "platform.crypto-cost-basis-only.\(id)",
                         severity: .notice,
-                        title: "Lightyear crypto: nincs aktuális árjegyzés",
-                        detail: "A tranzakciós export nem tartalmaz jelenlegi piaci értéket, ezért a pozíciók a bekerülési értéken látszanak. Új, értéket tartalmazó exporttal vagy későbbi árforrással frissíthető.")
+                        title: "Crypto: hiányzik az aktuális árjegyzés",
+                        detail: "A tranzakciós export nem tartalmaz jelenlegi piaci értéket, ezért ez a pozíció a bekerülési értéken látszik. A CoinGecko frissítés után jelenik meg az aktuális érték.")
                     issues.append(issue)
                     rowSeverity = max(rowSeverity, issue.severity)
                     details.append("crypto csak bekerülési értéken")

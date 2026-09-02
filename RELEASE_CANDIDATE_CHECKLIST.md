@@ -1,10 +1,12 @@
-# Portfolio 1.0 Release Candidate checklist — Build 36
+# Portfolio 1.0 Release Candidate checklist — Build 37
 
-This checklist is the no-device verification path for Build 36. It is safe to
+This checklist is the no-device verification path for Build 37. It is safe to
 run without bank credentials, signing secrets, or a connected phone.
 
 - [x] XcodeGen regenerated `Portfolio.xcodeproj` from `project.yml`.
-- [x] Unit-test target compiles for iPhoneOS without signing.
+- [ ] Unit-test target compiles for iPhoneOS without signing; the current host
+  run is blocked before app-source diagnostics by Xcode's
+  `ObservationMacros.ObservableMacro` plug-in sandbox error.
 - [x] All app, widget, share-extension, watch app, and watch widget targets
   compile in the Build 36 Release configuration. The build reports only the
   pre-existing DateFormatter and watch-target warnings.
@@ -25,6 +27,11 @@ run without bank credentials, signing secrets, or a connected phone.
 - [x] Lightyear főszámla-exportból az ISIN nélküli crypto Buy/Sell sorok (ETH,
   SOL, UNI és ismert tokenek) nettó mennyiséggel, történeti bekerülési értékkel
   és látható aktuális-ár hiány jelzéssel kerülnek be.
+- [x] CoinGecko HUF árfolyamréteg egyetlen kérésben frissíti az ismert crypto
+  tokeneket; a piaci egységár, 24 órás változás és időbélyeg külön mezőben
+  marad, és az aktuális érték nem írja felül a bekerülési értéket.
+- [x] Előtérben 45 másodperces crypto-frissítés fut; jelentős crypto-mozgás a
+  meglévő, napi egyszeri piaci értesítési csatornán jelenik meg.
 - [x] Enable Banking provider-állapot látható; élő API-hívás csak ellenőrzött,
   aktív konfigurációval indul, a privát kulcs készülék-helyi Keychainben marad.
 - [x] `git diff --check` passes.
@@ -38,6 +45,7 @@ run without bank credentials, signing secrets, or a connected phone.
 - [ ] Five-to-seven-day TestFlight observation — deferred until a device and
   App Store Connect upload are available.
 
+Build 37 implementation is complete for the CoinGecko crypto quote layer and
 Build 36 implementation is complete for the import-reconciliation,
 WebKincstár-detail, crypto-export, provider-gating and portfolio-value
 reconciliation slices, plus Lightyear crypto transaction recognition and the
