@@ -1,14 +1,16 @@
-# Portfolio 1.0 Release Candidate checklist — Build 37
+# Portfolio 1.0 Release Candidate checklist — Build 38
 
-This checklist is the no-device verification path for Build 37. It is safe to
+This checklist is the no-device verification path for Build 38. It is safe to
 run without bank credentials, signing secrets, or a connected phone.
 
 - [x] XcodeGen regenerated `Portfolio.xcodeproj` from `project.yml`.
 - [ ] Unit-test target compiles for iPhoneOS without signing; the current host
-  run is blocked before app-source diagnostics by Xcode's
-  `ObservationMacros.ObservableMacro` plug-in sandbox error.
+  run remains deferred because the unit-only invocation is blocked by Xcode's
+  `ObservationMacros.ObservableMacro` plug-in sandbox restriction.
+- [x] Full iPhoneOS Release scheme builds successfully with signing disabled;
+  the crypto result-builder error is resolved.
 - [x] All app, widget, share-extension, watch app, and watch widget targets
-  compile in the Build 36 Release configuration. The build reports only the
+  compile in the Build 38 Release configuration. The build reports only the
   pre-existing DateFormatter and watch-target warnings.
 - [x] Build number is read from the generated app bundle Info.plist.
 - [x] iCloud sync envelope round-trip and revision conflict tests compile in
@@ -45,7 +47,7 @@ run without bank credentials, signing secrets, or a connected phone.
 - [ ] Five-to-seven-day TestFlight observation — deferred until a device and
   App Store Connect upload are available.
 
-Build 37 implementation is complete for the CoinGecko crypto quote layer and
+Build 38 implementation is complete for the CoinGecko crypto quote layer and
 Build 36 implementation is complete for the import-reconciliation,
 WebKincstár-detail, crypto-export, provider-gating and portfolio-value
 reconciliation slices, plus Lightyear crypto transaction recognition and the

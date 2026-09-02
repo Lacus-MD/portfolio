@@ -351,22 +351,10 @@ struct PlatformDetailView: View {
                 )
             }
             ForEach(crypto) { position in
-                let quantityText = position.quantity.map { "\(Fmt.decimal($0, max: 8)) db" }
-                var metaParts = [String]()
-                if let quantityText { metaParts.append(quantityText) }
-                if let asOf = position.asOf { metaParts.append("export: \(Fmt.day(asOf))") }
-                if let marketPrice = position.marketPriceHUF {
-                    let quoteTime = position.marketAsOf.map { " · \(Fmt.time($0))" } ?? ""
-                    metaParts.append("CoinGecko · \(Fmt.huf(marketPrice))/db\(quoteTime)")
-                }
-                if let totalGain = cryptoTotalDelta(for: position) {
-                    metaParts.append("összesen \(Fmt.percent(totalGain))")
-                }
-                if metaParts.isEmpty { metaParts.append("Csak olvasható export") }
                 assetRow(
                     monogram: String(position.symbol.prefix(2)),
                     name: position.name,
-                    meta: metaParts.joined(separator: " · "),
+                    meta: cryptoMeta(position),
                     value: position.currentValueHUF,
                     delta: position.marketChangePercent ?? cryptoTotalDelta(for: position)
                 )
@@ -429,6 +417,24 @@ struct PlatformDetailView: View {
     private func cryptoTotalDelta(for position: CryptoPosition) -> Double? {
         guard let invested = position.investedValueHUF, invested > 0 else { return nil }
         return ((position.currentValueHUF - invested) / invested).doubleValue * 100
+    }
+
+    private func cryptoMeta(_ position: CryptoPosition) -> String {
+        var parts: [String] = []
+        if let quantity = position.quantity {
+            parts.append("\(Fmt.decimal(quantity, max: 8)) db")
+        }
+        if let asOf = position.asOf {
+            parts.append("export: \(Fmt.day(asOf))")
+        }
+        if let marketPrice = position.marketPriceHUF {
+            let quoteTime = position.marketAsOf.map { " · \(Fmt.time($0))" } ?? ""
+            parts.append("CoinGecko · \(Fmt.huf(marketPrice))/db\(quoteTime)")
+        }
+        if let totalGain = cryptoTotalDelta(for: position) {
+            parts.append("összesen \(Fmt.percent(totalGain))")
+        }
+        return parts.isEmpty ? "Csak olvasható export" : parts.joined(separator: " · ")
     }
 
     private func assetRow(monogram: String, name: String, meta: String,

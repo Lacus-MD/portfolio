@@ -230,6 +230,13 @@ az éles provider-alkalmazást, szerződést és saját kulcsot a felhasználó 
 Közös titok nincs az appban, a privát kulcs készülék-helyi Keychainben marad,
 és a kivonat-import provider nélkül is teljes értékű.
 
+### Build 38 — Release fordítási javítás
+
+A CoinGecko crypto sorokban a SwiftUI result-builder által nem támogatott
+lokális deklarációk külön metaadat-segédbe kerültek. A teljes iPhoneOS Release
+build aláírás nélkül sikeresen lefutott; csak a korábbi watch/DateFormatter
+figyelmeztetések maradtak.
+
 ### Build 37 — CoinGecko crypto árfolyamkövetés
 
 A Lightyear főszámla exportja továbbra is a crypto darabszámának és történeti

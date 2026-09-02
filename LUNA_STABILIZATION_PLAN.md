@@ -59,6 +59,7 @@ sikeres, a telefonos telepítés sikerült, és a commit felkerült GitHubra.
 | 35 | Hétköznapi piaczárási helyi értesítés | ellenőrzés alatt | munkafolyamatban |
 | 36 | Lightyear főszámla crypto-tranzakciós export felismerése | ellenőrzés alatt | munkafolyamatban |
 | 37 | CoinGecko crypto árfolyamkövetés és előtérbeli frissítés | ellenőrzés alatt | munkafolyamatban |
+| 38 | Release fordítási hiba javítása a crypto nézetben | elkészült (telefonos ellenőrzés halasztva) | — |
 
 ### Következő fejlesztési sorrend (felhőszinkron kész)
 
@@ -95,6 +96,10 @@ adat marad látható, a reconciliation pedig jelzi, ha nincs még árjegyzés.
 
 A Build 36 Release ellenőrzése elkészült; a runtime-ellenőrzés a host Xcode
 plug-in/CoreSimulator korlátozása miatt továbbra sem zárható le.
+
+A Build 38-ban a CoinGecko crypto sorok SwiftUI result-builder hibája javítva
+lett: a metaadatok összeállítása külön segédfüggvénybe került, így a teljes
+Release target ismét fordítható.
 
 Engedélyezett állapotok:
 
