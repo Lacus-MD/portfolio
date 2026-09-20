@@ -11,7 +11,7 @@
 	<string>hu.halasz.portfolio.statement-watcher</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>/Users/lacus/Portfolio/Tools/PortfolioFigyelo.app/Contents/MacOS/applet</string>
+		<string>/Users/lacus/Appok/Portfolio/Tools/PortfolioFigyelo.app/Contents/MacOS/applet</string>
 	</array>
 	<key>WatchPaths</key>
 	<array>

@@ -18,7 +18,7 @@ javítást kér.
 
 ## 2. Kiindulási állapot
 
-- Repo: `/Users/lacus/Portfolio`
+- Repo: `/Users/lacus/Appok/Portfolio`
 - GitHub: `https://github.com/Lacus-MD/portfolio`
 - Alkalmazáskód kiinduló commitja: `db2612e`
 - Kiinduló build: `20`
@@ -29,7 +29,7 @@ javítást kér.
 - Fizikai iPhone devicectl ID:
   `F1C6000E-90D0-5D59-ABAC-232B64DE0DAF`
 - Telefonos telepítő:
-  `/Users/lacus/Portfolio/Telefonra telepítés.command`
+  `/Users/lacus/Appok/Portfolio/Telefonra telepítés.command`
 
 A tervfájl létrehozása dokumentációs változás, ezért önmagában nem kap új
 app-buildszámot. Az első alkalmazáskódot érintő mérföldkő a Build 21.

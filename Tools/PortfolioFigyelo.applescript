@@ -4,5 +4,5 @@
 -- helyett. Egy app viszont első futáskor engedélyt kér, és a rendszer
 -- megjegyzi a választ.
 on run
-	do shell script "/Users/lacus/Portfolio/Tools/statement-watcher.sh"
+	do shell script "/Users/lacus/Appok/Portfolio/Tools/statement-watcher.sh"
 end run
