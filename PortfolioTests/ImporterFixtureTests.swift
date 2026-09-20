@@ -20,7 +20,7 @@ final class ImporterFixtureTests: XCTestCase {
     }
 
     func testOTPAccountFixtureSeparatesCurrentAccountAndKeepsBalance() throws {
-        let fixture = try FixtureLoader.string(named: "otp-account", subdirectory: "OTP")
+        let fixture = try FixtureLoader.string(named: "otp-account", fileExtension: "txt", subdirectory: "OTP")
         let result = try OTPImporter.import(text: fixture)
         let repeated = try OTPImporter.import(text: fixture)
 
@@ -38,7 +38,7 @@ final class ImporterFixtureTests: XCTestCase {
     }
 
     func testOTPCreditFixtureIsNegativeDebtAndParsesQuotedText() throws {
-        let fixture = try FixtureLoader.string(named: "otp-credit", subdirectory: "OTP")
+        let fixture = try FixtureLoader.string(named: "otp-credit", fileExtension: "txt", subdirectory: "OTP")
         let result = try OTPImporter.import(text: fixture)
         let repeated = try OTPImporter.import(text: fixture)
 
