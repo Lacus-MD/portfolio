@@ -285,7 +285,8 @@ enum EnableBankingJWT {
             key, .rsaSignatureMessagePKCS1v15SHA256,
             Data(signingInput.utf8) as CFData, &error
         ) as Data? else {
-            throw error?.takeRetainedValue() ?? EnableBankingError.signingFailed as CFError
+            if let error = error?.takeRetainedValue() { throw error }
+            throw EnableBankingError.signingFailed
         }
         return "\(signingInput).\(signature.base64URLEncodedString())"
     }
@@ -311,7 +312,8 @@ enum EnableBankingJWT {
         ]
         var error: Unmanaged<CFError>?
         guard let key = SecKeyCreateWithData(der as CFData, attributes as CFDictionary, &error) else {
-            throw error?.takeRetainedValue() ?? EnableBankingError.invalidPrivateKey as CFError
+            if let error = error?.takeRetainedValue() { throw error }
+            throw EnableBankingError.invalidPrivateKey
         }
         guard SecKeyIsAlgorithmSupported(key, .sign, .rsaSignatureMessagePKCS1v15SHA256) else {
             throw EnableBankingError.invalidPrivateKey
